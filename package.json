@@ -1,0 +1,73 @@
+{
+  "name": "dsh-line-bot",
+  "version": "0.1.0",
+  "description": "把 LINE 官方帳號（Messaging API）接進 DeepSeek Harness 的插件：內建 Cloudflare Tunnel、大肥魚人設選擇、主動傳訊與完整設定面板。",
+  "type": "module",
+  "main": "index.js",
+  "icon": "icon.svg",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./icon": "./icon.svg",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "lib",
+    "locale",
+    "icon.svg",
+    "README.md",
+    "bin",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.0-rc.1"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "line",
+    "line-bot",
+    "cloudflare",
+    "tunnel",
+    "persona"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "author": "Hanson0901",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hanson0901/dsh-line-bot.git"
+  },
+  "homepage": "https://github.com/Hanson0901/dsh-line-bot#readme",
+  "bugs": {
+    "url": "https://github.com/Hanson0901/dsh-line-bot/issues"
+  },
+  "bin": {
+    "dsh-line-bot": "./bin/cli.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "node --check client.js && node --check index.js && node --check lib/host.mjs && node --check bin/cli.mjs"
+  }
+}

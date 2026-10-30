@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "LINE Bot",
+    "description": "Connect a LINE Official Account to DeepSeek Harness: paste the two LINE credentials, expose the webhook through a Cloudflare tunnel, reply with the 大肥魚 persona by default (switchable), and tune every setting — including proactive message counts — from the panel."
+  }
+}

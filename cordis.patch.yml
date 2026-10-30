@@ -1,0 +1,16 @@
+# ============================================================================
+# dsh-line-bot —— DSH bundle patch（插件自帶的掛載宣告）
+# ============================================================================
+# 安裝後 profile 只要在 dsh.profile.bundles 列出本包名即生效：
+#   dsh plugin --profile desktop add /path/to/dsh-line-bot
+#
+# 這裡只放插件級開關；真正的使用者設定（LINE 憑證、Cloudflare Token、人設、
+# 主動傳訊次數…）全部在「設定 → LINE Bot」面板裡調整，落地在
+# <DSH_HOME>/line-bot/config.json（檔案權限 600）。
+# ============================================================================
+
+- insert:
+    - id: line-bot
+      name: dsh-line-bot
+      config:
+        enabled: true

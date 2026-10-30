@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "LINE Bot",
+    "description": "把 LINE 官方帳號接進 DeepSeek Harness：填兩組 LINE 憑證、用 Cloudflare Tunnel 對外開 webhook，回覆預設套用大肥魚人設（可切換），所有設定與主動傳訊次數都能在面板調整。"
+  }
+}
