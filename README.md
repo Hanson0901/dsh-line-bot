@@ -71,6 +71,8 @@ dsh plugin --profile desktop add dsh-line-bot
 | 區塊 | 內容 |
 | --- | --- |
 | 狀態總覽 | webhook server／隧道／LINE／人設／主動傳訊的綠燈狀態、公開網址、一鍵上線與啟停 |
+| DeepSeek 餘額 | 目前餘額、每輪注入、低於門檻時由角色主動提醒、提醒門檻與冷卻 |
+| 個人記憶 | 每位使用者分開的長期記憶、到期自動刪、每日請角色整理、手動刪除 |
 | LINE 憑證 | Channel ID、Channel Secret、Access Token、自動簽發、loading 動畫、bot 資訊、webhook 套用／測試、白名單 |
 | Cloudflare Tunnel | quick／API Token 模式、Token、hostname、隧道名稱、Account／Zone ID、下載 cloudflared、啟停、自動設定 webhook、自行提供的公開網址 |
 | 回覆人設 | 選擇人設（大肥魚或插件自訂）、新增／編輯／刪除自訂人設、把目前人設複製成自訂、強制套用、允許使用者自己換人設、切換大肥魚 session 模式、測試 Agent 回覆 |
@@ -141,6 +143,16 @@ dsh plugin --profile desktop add dsh-line-bot
 - 需要 DSH 已登入 DeepSeek 帳號（deepseek-account）。沒登入或該 profile 沒掛這個服務時，卡片會顯示原因，其餘功能不受影響。
 - 門檻用的是錢包金額，不是 token 數：DeepSeek 平台顯示的是金額，token 換算會隨模型與快取變動。
 
+## 個人記憶
+
+角色有一份自己的記憶，存在 `<DSH_HOME>/line-bot/memories.json`，每位使用者分開：
+
+- 對話中出現它覺得重要的資訊（喜好、近況、承諾、重要事件），它會自己用 `line_memory_add` 記下來，不用你交代。
+- 有期限的事（考試、旅行、短期狀況）可以標到期日，時間到自動刪除；你也可以直接叫它「忘掉這件事」。
+- 每天（預設凌晨 4 點，面板可改）它會自己整理一次：把過期、一次事件已結束、或明顯不再成立的記憶刪掉。
+- 每輪只帶入最近的 N 筆（預設 20 筆、2000 字），其餘仍留在檔案裡；每人上限預設 120 筆，超過時刪最舊的。
+- 密碼、token、證件號等敏感資料不該叫它記，它也會避免。
+- 面板的「個人記憶」卡可以看目前記了什麼、手動刪除、立即清理到期、或現在就叫它整理一次。
 ## 疑難排解
 
 - **面板顯示「無法連線到 LINE Bot 執行期」**：webServer 可能還沒就緒，重新整理即可；仍失敗就看 DSH 日誌裡 `[line-bot]` 的訊息。

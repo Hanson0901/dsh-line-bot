@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
     const NAV = [
       { key: 'overview', label: '狀態總覽' },
       { key: 'balance', label: 'DeepSeek 餘額' },
+      { key: 'memory', label: '個人記憶' },
       { key: 'line', label: 'LINE 憑證' },
       { key: 'tunnel', label: 'Cloudflare' },
       { key: 'persona', label: '回覆人設' },
@@ -293,6 +294,10 @@ window.__ModuleLoader__.load({
       'persona-mode': '切換人設模式',
       'tieba-preview': '預覽貼吧同步差異',
       'balance-refresh': '查詢 DeepSeek 餘額',
+      'memory-list': '讀取個人記憶',
+      'memory-delete': '刪除記憶',
+      'memory-prune': '清理到期記憶',
+      'memory-review': '請角色整理記憶',
       'balance-ask': '餘額提醒',
       'tieba-sync': '同步貼吧學習',
       'local-persona-list': '讀取自訂人設',
@@ -317,6 +322,7 @@ window.__ModuleLoader__.load({
       const [active, setActive] = useState('overview')
       const [syncPreview, setSyncPreview] = useState(null)
       const [balancePreview, setBalancePreview] = useState(null)
+      const [memoryData, setMemoryData] = useState(null)
       const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
       const dirty = useMemo(() => {
@@ -435,6 +441,50 @@ window.__ModuleLoader__.load({
         setBalancePreview(null)
         await act('balance-ask', { dryRun: false, force: true })
       }
+
+      async function loadMemory({ quiet = false } = {}) {
+        if (!quiet) setBusy('memory-list')
+        try {
+          if (dirty && !quiet) await persist(false)
+          const value = await jpost('/action', { action: 'memory-list', payload: {} })
+          if (value?.status) {
+            setStatus(value.status)
+            setDraft(stripSecrets(value.status.config))
+          }
+          setMemoryData(value?.result || null)
+        } catch (err) {
+          if (!quiet) setToast({ kind: 'error', text: '讀取記憶失敗：' + (err.message || err) })
+        } finally {
+          if (!quiet) setBusy('')
+        }
+      }
+
+      async function removeMemory(userId, entry) {
+        setBusy('memory-delete')
+        try {
+          const value = await jpost('/action', { action: 'memory-delete', payload: { userId, id: entry.id } })
+          if (value?.status) {
+            setStatus(value.status)
+            setDraft(stripSecrets(value.status.config))
+          }
+          await loadMemory({ quiet: true })
+          setToast({ kind: 'ok', text: '已刪掉一筆記憶。' })
+        } catch (err) {
+          setToast({ kind: 'error', text: '刪除記憶失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function runMemory(action) {
+        await act(action)
+        await loadMemory({ quiet: true })
+      }
+
+      useEffect(() => {
+        loadMemory({ quiet: true })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [])
 
       async function previewSync() {
         setBusy('tieba-preview')
@@ -566,6 +616,9 @@ window.__ModuleLoader__.load({
       const balanceStatus = status.balance || {}
       const balanceSymbol = balanceStatus.cny ? '¥' : balanceStatus.usd ? '$' : '¥'
       const balanceTotal = balanceStatus.cny ? balanceStatus.cny.total : balanceStatus.usd ? balanceStatus.usd.total : null
+      const memoryCfg = cfg.memory || {}
+      const memoryStatus = status.memory || {}
+      const memoryUsers = memoryData?.users || []
       const syncStats = status.sync || {}
       const runtime = status
       const persona = status.persona || {}
@@ -703,6 +756,53 @@ window.__ModuleLoader__.load({
             h(Btn, { tone: 'primary', onClick: askBalance, disabled: !!busy }, '立即提醒一次'),
           ),
           balancePreview && balancePreview.text ? h('div', { style: S.panelBox }, h('div', { style: S.fieldTitle }, '角色會傳這則：'), h('pre', { style: S.pre }, balancePreview.text)) : null,
+        ),
+
+        // 1.6 個人記憶
+        h(
+          Card,
+          {
+            id: sectionDomId('memory'),
+            title: '個人記憶',
+            desc: '每位使用者分開。角色覺得重要的事會自己記下來；有期限的到期自動刪，每天也會請角色自己整理一次。',
+            right: h(Btn, { onClick: () => loadMemory(), disabled: !!busy }, busy === 'memory-list' ? '讀取中…' : '重新整理'),
+          },
+          h('div', { style: S.row },
+            h(Badge, { ok: memoryStatus.enabled !== false }, '共 ' + (memoryStatus.total || 0) + ' 筆'),
+            h(Badge, { ok: memoryCfg.reviewDaily !== false }, '每日整理：' + (memoryCfg.reviewDaily !== false ? (Number(memoryCfg.reviewHour) || 0) + ' 點' : '關閉')),
+            h(Badge, { ok: true }, '到期自動刪'),
+          ),
+          h(KV, { rows: [
+            ['上次清理', memoryStatus.lastPruneAt ? fmtTime(memoryStatus.lastPruneAt) : '還沒清過'],
+            ['上次角色整理', memoryStatus.lastReviewAt ? fmtTime(memoryStatus.lastReviewAt) : '還沒整理過'],
+            ['記憶檔', memoryStatus.file || ''],
+          ] }),
+          h('div', { style: S.grid },
+            h(Field, { label: '每天整理時間（0–23 點）', hint: '由角色自己判斷哪幾筆該忘掉' }, h(Num, { value: memoryCfg.reviewHour, min: 0, max: 23, step: 1, onChange: (value) => update({ memory: { reviewHour: value } }) })),
+            h(Field, { label: '每輪最多帶入幾筆', hint: '其餘仍留在檔案裡' }, h(Num, { value: memoryCfg.injectMaxEntries, min: 1, max: 80, step: 1, onChange: (value) => update({ memory: { injectMaxEntries: value } }) })),
+            h(Field, { label: '每人上限（筆）', hint: '超過時刪最舊的' }, h(Num, { value: memoryCfg.maxPerUser, min: 10, max: 500, step: 10, onChange: (value) => update({ memory: { maxPerUser: value } }) })),
+            h(Field, { label: '帶入字數上限', hint: '避免佔用太多 prompt' }, h(Num, { value: memoryCfg.injectMaxChars, min: 200, max: 8000, step: 200, onChange: (value) => update({ memory: { injectMaxChars: value } }) })),
+          ),
+          h('div', { style: S.row },
+            h(Toggle, { checked: memoryCfg.enabled !== false, onChange: (value) => update({ memory: { enabled: value } }), label: '開啟個人記憶', hint: '關掉後角色不再記新的事情，也不會讀到舊的' }),
+            h(Toggle, { checked: memoryCfg.reviewDaily !== false, onChange: (value) => update({ memory: { reviewDaily: value } }), label: '每天請角色整理一次', hint: '清掉過期或不再成立的記憶' }),
+          ),
+          h('div', { style: S.row },
+            h(Btn, { onClick: () => runMemory('memory-prune'), disabled: !!busy }, busy === 'memory-prune' ? '清理中…' : '清理到期記憶'),
+            h(Btn, { onClick: () => runMemory('memory-review'), disabled: !!busy }, busy === 'memory-review' ? '整理中…' : '現在請角色整理'),
+          ),
+          memoryData
+            ? (memoryUsers.length === 0
+                ? h('div', { style: S.note }, '目前沒有任何記憶。角色在對話中覺得重要時，會自己記下來。')
+                : memoryUsers.map((row) => h('div', { key: row.userId, style: S.panelBox },
+                    h('div', { style: S.fieldTitle }, (row.displayName || row.userId) + '（' + row.entries.length + ' 筆）'),
+                    row.entries.map((entry) => h('div', { key: entry.id, style: { display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 0', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+                      h('span', { style: { flex: '0 0 auto', fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', paddingTop: 2 } }, ({ fact: '事實', event: '事件', preference: '喜好', inside: '默契' })[entry.kind] || entry.kind),
+                      h('span', { style: { flex: 1, fontSize: 13, lineHeight: 1.5 } }, entry.text, entry.expiresText ? h('span', { style: { color: 'var(--dsw-alias-label-tertiary)' } }, '（到 ' + String(entry.expiresText).slice(0, 10) + '）') : null),
+                      h(Btn, { tone: 'danger', onClick: () => removeMemory(row.userId, entry), disabled: !!busy }, '刪除'),
+                    )),
+                  )))
+            : h('div', { style: S.note }, '按「重新整理」讀取目前記住的內容。'),
         ),
 
         // 2. LINE 憑證

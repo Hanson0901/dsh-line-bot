@@ -71,6 +71,8 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Section | Contents |
 | --- | --- |
 | Overview | Green-light status for webhook server / tunnel / LINE / persona / proactive messages, public URL, one-click bring-up and start/stop |
+| DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown |
+| Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
 | LINE credentials | Channel ID, Channel Secret, Access Token, auto-issue, loading animation, bot info, webhook apply/test, allow-list |
 | Cloudflare Tunnel | quick / API token modes, token, hostname, tunnel name, Account/Zone ID, download cloudflared, start/stop, auto-configure webhook, bring your own public URL |
 | Reply persona | Choose a persona (dafeiyu or a plugin custom one), add/edit/delete custom personas, copy the current persona into a custom one, enforce, allow users to switch personas, switch dafeiyu to session mode, test an Agent reply |
@@ -141,6 +143,16 @@ The **DeepSeek balance** card reads the wallet balance of the DeepSeek account D
 - Requires DSH to be signed in to a DeepSeek account (deepseek-account). If it is not, the card explains why and everything else keeps working.
 - The threshold is money, not tokens: Platform shows a wallet balance, and token conversion varies by model and cache hits.
 
+## Personal memory
+
+The character keeps its own memory at `<DSH_HOME>/line-bot/memories.json`, separated per user:
+
+- When something important comes up (preferences, current situation, promises, notable events), it saves it with `line_memory_add` on its own.
+- Time-limited items (exams, trips, short-term situations) can carry an expiry date and are deleted automatically; you can also just tell it to forget something.
+- Once a day (4 AM by default, configurable in the panel) it reviews the list and removes expired items, one-off events that are over, or facts that no longer hold.
+- Each turn only injects the most recent N entries (20 entries / 2000 characters by default); the rest stay in the file. The per-user cap defaults to 120 entries and evicts the oldest.
+- Passwords, tokens, ID numbers and similar secrets should not be stored; it avoids them.
+- The "Personal memory" panel card shows what it remembers, lets you delete entries, prune expired ones, or trigger a review right away.
 ## Troubleshooting
 
 - **The panel says "cannot connect to the LINE Bot runtime"**: webServer may not be ready yet; refresh. If it still fails, look for `[line-bot]` messages in the DSH logs.
