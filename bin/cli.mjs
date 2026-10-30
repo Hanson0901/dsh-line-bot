@@ -16,6 +16,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+
+const IS_WIN = process.platform === 'win32'
 import { fileURLToPath } from 'node:url'
 
 const PKG = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
@@ -140,19 +142,54 @@ function withBundle(manifest, enabled) {
   }
 }
 
+function windowsPnpmCandidates() {
+  const roots = [
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs'),
+    process.env.PROGRAMFILES,
+    process.env['PROGRAMFILES(X86)'],
+  ].filter(Boolean)
+  const suffix = ['resources', 'runtime', 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.cjs']
+  const found = []
+  for (const root of roots) {
+    found.push(path.join(root, 'DeepSeek Harness', ...suffix))
+    try {
+      for (const name of fs.readdirSync(root)) {
+        if (/deepseek/i.test(name)) found.push(path.join(root, name, ...suffix))
+      }
+    } catch {
+      /* 目錄不存在就跳過 */
+    }
+  }
+  return found
+}
+
 function findPnpm() {
   const localPnpm = process.platform === 'darwin'
-    ? '/Applications/DeepSeek Harness.app/Contents/Resources/runtime/primary-runtime/dependencies/pnpm/bin/pnpm.cjs'
-    : ''
-  if (localPnpm && fs.existsSync(localPnpm)) return { kind: 'pnpm', command: process.execPath, prefix: [localPnpm] }
-  const pnpm = spawnSync('pnpm', ['--version'], { stdio: 'ignore' })
-  if (pnpm.status === 0) return { kind: 'pnpm', command: 'pnpm', prefix: [] }
+    ? ['/Applications/DeepSeek Harness.app/Contents/Resources/runtime/primary-runtime/dependencies/pnpm/bin/pnpm.cjs']
+    : process.platform === 'win32'
+      ? windowsPnpmCandidates()
+      : []
+  for (const candidate of localPnpm) {
+    if (fs.existsSync(candidate)) return { kind: 'pnpm', command: process.execPath, prefix: [candidate], shell: false }
+  }
+  const pnpm = spawnSync('pnpm', ['--version'], { stdio: 'ignore', shell: IS_WIN })
+  if (pnpm.status === 0) return { kind: 'pnpm', command: 'pnpm', prefix: [], shell: IS_WIN }
   return null
 }
 
 function findDsh() {
-  const probe = spawnSync('dsh', ['--version'], { stdio: 'ignore' })
-  return probe.status === 0 ? 'dsh' : ''
+  const probe = spawnSync('dsh', ['--version'], { stdio: 'ignore', shell: IS_WIN })
+  return probe.status === 0 ? { command: 'dsh', shell: IS_WIN } : null
+}
+
+function quoteWin(value) {
+  return /[\s"]/.test(value) ? '"' + value.replace(/"/g, '\\"') + '"' : value
+}
+
+function spawnTool(tool, args, options) {
+  if (!tool.shell) return spawnSync(tool.command, [...(tool.prefix || []), ...args], options)
+  const line = [tool.command, ...args].map(quoteWin).join(' ')
+  return spawnSync(line, { ...options, shell: true })
 }
 
 function runInstall(profile, versionSpec, { dryRun }) {
@@ -161,18 +198,20 @@ function runInstall(profile, versionSpec, { dryRun }) {
   let result
   if (dsh) {
     const args = ['plugin', '--profile', profile, 'add', versionSpec]
-    out(`→ ${dsh} ${args.join(' ')}`)
-    if (!dryRun) result = spawnSync(dsh, args, { cwd: dir, stdio: 'inherit' })
+    out(`→ dsh ${args.join(' ')}`)
+    if (!dryRun) result = spawnTool(dsh, args, { cwd: dir, stdio: 'inherit' })
   } else {
     const pnpm = findPnpm()
     if (!pnpm) {
       fail(
-        '找不到 dsh 或 pnpm。請先安裝 DeepSeek Harness 桌面版（內含 pnpm），或改用面板「設定 → 外掛 → 安裝」。',
+        IS_WIN
+          ? '找不到 dsh 或 pnpm。請先安裝 DeepSeek Harness 桌面版（內含 pnpm），或先執行「npm install -g pnpm」再重試；也可以直接用面板「設定 → 外掛 → 安裝 bundle」。'
+          : '找不到 dsh 或 pnpm。請先安裝 DeepSeek Harness 桌面版（內含 pnpm），或改用面板「設定 → 外掛 → 安裝」。',
       )
     }
-    const args = [...pnpm.prefix, 'add', versionSpec, '--dir', dir]
+    const args = [...(pnpm.prefix || []), 'add', versionSpec, '--dir', dir]
     out(`→ ${pnpm.command} ${args.join(' ')}`)
-    if (!dryRun) result = spawnSync(pnpm.command, args, { cwd: dir, stdio: 'inherit' })
+    if (!dryRun) result = spawnTool(pnpm, args, { cwd: dir, stdio: 'inherit' })
   }
   if (!dryRun && result && result.status !== 0) {
     fail(`安裝套件失敗（pnpm 結束碼 ${result.status}）。請確認網路與 ${dir} 的權限後重試。`)
@@ -232,9 +271,9 @@ function commandUninstall(options) {
   const dsh = findDsh()
   if (dsh) {
     const args = ['plugin', '--profile', profile, 'remove', NAME]
-    out(`→ ${dsh} ${args.join(' ')}`)
+    out(`→ dsh ${args.join(' ')}`)
     if (!options.dryRun) {
-      const result = spawnSync(dsh, args, { cwd: dir, stdio: 'inherit' })
+      const result = spawnTool(dsh, args, { cwd: dir, stdio: 'inherit' })
       if (result.status !== 0) out('（pnpm 移除失敗，可能本來就沒安裝；bundle 清單已處理）')
     }
   } else {

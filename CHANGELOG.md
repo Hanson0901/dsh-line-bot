@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- 修好 Windows 安裝：`npx dsh-line-bot install` 現在會找到 DeepSeek Harness 內建的 pnpm（`%LOCALAPPDATA%\Programs\…`、`%PROGRAMFILES%`），也會正確透過 `shell` 執行 `dsh.cmd` / `pnpm.cmd`。
+- 找不到 pnpm 時的錯誤訊息補上 Windows 的建議（`npm install -g pnpm` 或改用面板安裝）。
+
 ## 0.3.0
 
 - 新增「個人記憶」：每位使用者一份長期記憶（`<DSH_HOME>/line-bot/memories.json`），角色可在對話中自己呼叫 `line_memory_add` 記下重要資訊、用 `line_memory_forget` 忘掉、用 `line_memory_list` 確認。
