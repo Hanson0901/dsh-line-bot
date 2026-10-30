@@ -30,7 +30,7 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-  const options = { command: '', profile: '', version: '', dryRun: false, enable: true }
+  const options = { command: '', profile: '', version: '', spec: '', dryRun: false, enable: true }
   const rest = [...argv]
   options.command = (rest.shift() || 'help').toLowerCase()
   for (let index = 0; index < rest.length; index += 1) {
@@ -47,6 +47,11 @@ function parseArgs(argv) {
       options.version = arg.slice('--version='.length)
     } else if (arg === '--dry-run' || arg === '-n') {
       options.dryRun = true
+    } else if (arg === '--spec') {
+      options.spec = rest[index + 1] || ''
+      index += 1
+    } else if (arg.startsWith('--spec=')) {
+      options.spec = arg.slice('--spec='.length)
     } else if (arg === '--no-enable') {
       options.enable = false
     } else if (arg === '--help' || arg === '-h') {
@@ -177,7 +182,7 @@ function runInstall(profile, versionSpec, { dryRun }) {
 function commandInstall(options) {
   const profile = pickProfile(options.profile)
   const { dir, file, manifest } = readManifest(profile)
-  const versionSpec = options.version ? `${NAME}@${options.version}` : `${NAME}@${PKG.version}`
+  const versionSpec = options.spec || (options.version ? `${NAME}@${options.version}` : `${NAME}@${PKG.version}`)
   out('')
   out(`dsh-line-bot ${PKG.version}`)
   out(`profile：${profile}（${dir}）`)
@@ -268,6 +273,7 @@ function commandHelp() {
   out('選項：')
   out('  --profile, -p <名稱>   DSH profile（預設讀 DSH_PROFILE，否則 desktop）')
   out('  --version, -v <版本>   指定要安裝的版本（預設跟這個 CLI 相同）')
+  out('  --spec <pnpm 規格>     直接指定套件規格，例如 github:Hanson0901/dsh-line-bot')
   out('  --no-enable            只安裝套件，不寫入 bundle 清單')
   out('  --dry-run, -n          只顯示會做什麼，不寫入')
   out('  --help, -h             顯示這段說明')

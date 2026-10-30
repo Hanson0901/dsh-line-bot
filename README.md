@@ -44,7 +44,13 @@ dsh plugin --profile desktop add dsh-line-bot
 
 再把 `dsh-line-bot` 加進 `~/.dsh/profiles/desktop/package.json` 的 `dsh.profile.bundles` 陣列（可參考 `npx dsh-line-bot install` 的做法），或改用面板安裝。
 
-> 從原始碼安裝：`git clone https://github.com/Hanson0901/dsh-line-bot.git`，再在 DSH 面板「安裝 bundle」選那個資料夾；或 `dsh plugin --profile desktop add /path/to/dsh-line-bot`。
+> 還沒發佈到 npm 時，也可以直接從 GitHub 安裝：
+>
+> ```bash
+> npx github:Hanson0901/dsh-line-bot install --spec github:Hanson0901/dsh-line-bot
+> ```
+>
+> 或從原始碼：`git clone https://github.com/Hanson0901/dsh-line-bot.git`，在 DSH 面板「安裝 bundle」選那個資料夾，或 `dsh plugin --profile desktop add /path/to/dsh-line-bot`。
 
 ## 第一次上線（5 步）
 
