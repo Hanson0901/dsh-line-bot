@@ -1,0 +1,151 @@
+# dsh-line-bot
+
+<p align="center"><img src="icon.svg" width="96" height="96" alt="dsh-line-bot"></p>
+
+**言語 / Languages:** [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+
+LINE 公式アカウント（Messaging API）を DeepSeek Harness につなぐプラグインです。返信は DSH の Agent が**同じプロセス内**で生成するため、LINE 上で自分の DSH アシスタントと会話している感覚になります。ペルソナは、大肥魚（`dsh-persona-dafeiyu`）がインストールされていればそのペルソナをそのまま選べますし、どのペルソナプラグインもなしでプラグイン内蔵のカスタムペルソナだけを使うこともできます。
+
+内蔵機能：
+
+- **Webhook サーバー**：ローカルの `127.0.0.1` に HTTP サーバーを開き、LINE の `X-Line-Signature` 検証、イベントの重複排除、ユーザーごとのキューを処理します。
+- **Cloudflare Tunnel**：ワンクリックの quick tunnel（`*.trycloudflare.com`、Cloudflare アカウント不要）、または Cloudflare API トークンを貼り付けて名前付きトンネル＋DNS を作成し固定 URL を取得します。URL が取得できたら webhook エンドポイントを LINE に書き戻し、`webhook/test` を実行します。
+- **LINE 認証情報**：Channel ID と Channel Secret を入力すれば access token を自動発行（`/v2/oauth/accessToken`、約 30 日、期限が近づくと自動更新）。既存の Channel Access Token を貼り付けることもできます。
+- **ペルソナ**：パネルから大肥魚プラグインの内蔵／カスタムペルソナを選べるほか、プラグイン内蔵のカスタムペルソナ（`<DSH_HOME>/line-bot/personas.json`、追加・編集・インポート可）も使えます。ペルソナはセッション単位で指定され、GUI の他の会話には影響しません。
+- **自発メッセージ**：プラグイン内蔵のスケジューラー（launchd 不要）。確率・間隔・1 日／1 か月の上限・最短間隔・静かな時間帯・相手がどれだけ沈黙していたら話しかけるか・対象ユーザー・プロンプトを設定できます。Agent が「今は違う」と判断したら `SKIP` を返して見送れます。
+- **充実した設定パネル**：設定はすべて「設定 → LINE Bot」にあり、`<DSH_HOME>/line-bot/config.json`（モード 600）に保存されます。
+
+> 「LINE Business ID でログインしてパネルから bot を作る」ことについて：LINE は 2024-09 以降、Messaging API チャネルの作成を [LINE Official Account Manager](https://manager.line.biz/) での手動操作のみに制限しており、公開 API はありません。LINE Login も本人確認だけで、公式アカウントの管理権限は取得できません。そのためパネルは bot を作成しませんが、正しい入口リンクを提示し、「Channel ID / Secret を取得した後」の作業（トークン発行、webhook 設定、テスト）を自動化します。
+
+## インストール
+
+要件：DeepSeek Harness **≥ 0.2.0-rc.1**、Node.js **≥ 22**。ペルソナプラグイン（大肥魚 `dsh-persona-dafeiyu`）は**任意**です — インストールしなくてもプラグイン内蔵のカスタムペルソナが使えます。
+
+### 方法 1：パネルからインストール（推奨）
+
+DSH → **設定 → プラグイン → bundle をインストール** で `dsh-line-bot` を入力してインストールし、ページを再読み込みします。設定の左側に **LINE Bot** が追加されます。
+
+### 方法 2：npx でワンコマンドインストール
+
+まず DSH を完全に終了します（デスクトップ版ならウィンドウを閉じ、メニューバー／プロセスが残っていないことを確認）。その後に実行します。
+
+```bash
+npx dsh-line-bot install
+```
+
+どの profile に入れるかを自動判定し（既定は `desktop`、`--profile <名前>` で指定可）、DSH 内蔵の pnpm でパッケージをインストールし、bundle を profile に追加して、DSH の再起動を促します。
+
+```bash
+npx dsh-line-bot status      # どの profile に入っているか、有効かどうか
+npx dsh-line-bot uninstall   # 削除（設定と認証情報は残ります）
+```
+
+### 方法 3：手動
+
+```bash
+dsh plugin --profile desktop add dsh-line-bot
+```
+
+その後 `~/.dsh/profiles/desktop/package.json` の `dsh.profile.bundles` 配列に `dsh-line-bot` を追加します（`npx dsh-line-bot install` の動作を参考にしてください）。パネルからのインストールでも構いません。
+
+> まだ npm に公開していない場合は、GitHub から直接インストールできます。
+>
+> ```bash
+> npx github:Hanson0901/dsh-line-bot install --spec github:Hanson0901/dsh-line-bot
+> ```
+>
+> ソースからなら：`git clone https://github.com/Hanson0901/dsh-line-bot.git` して、DSH パネルの「bundle をインストール」でそのフォルダを選ぶか、`dsh plugin --profile desktop add /path/to/dsh-line-bot` を実行します。
+
+## 初回セットアップ（5 ステップ）
+
+1. **認証情報を用意**：[LINE Official Account Manager](https://manager.line.biz/) で公式アカウントを作成 → [LINE Developers Console](https://developers.line.biz/console/) で Messaging API チャネルを作成（または選択）→ 「Messaging API」タブで **Use webhook** をオン → **Channel ID** と **Channel secret** をコピーします。
+2. **パネルに入力**：「LINE Bot → LINE 認証情報」に Channel ID と Channel Secret を貼り、「変更を保存」→「検証して bot 情報を取得」を押します。成功すると bot 名と Basic ID が表示されます。
+3. **webhook サーバーを起動**：「概要」で「すべて起動」を押すか、「起動」を押して webhook サーバーとトンネルを両方立ち上げます（既定で自動起動します）。
+4. **トンネルを開く**：Quick tunnel なら「トンネルを起動」を押すだけ。固定 URL が必要なら「Cloudflare Tunnel」で API トークンを貼り →「API トークンを検証」→「トンネルと DNS を作成／更新」（トークン権限：Account → Cloudflare Tunnel → Edit、Zone → DNS → Edit、Zone → Zone → Read）。quick tunnel は再起動のたびに URL が変わります（プラグインが新しい URL を LINE webhook に自動で書き戻します）。名前付きトンネルの URL は固定です。
+5. **webhook を自動設定**：トンネルの準備ができると自動で LINE に PUT します。失敗したら「トンネル URL を webhook に適用」→「webhook をテスト」を押します。あとは LINE で bot を友だち追加してメッセージを送るだけです。
+
+## パネルの各セクション
+
+パネル上部には**固定（sticky）保存バー**があり、どこまでスクロールしても「変更を保存／再読み込み」が見えます。その下にはクイックナビがあり、押すと該当セクションへジャンプします（スクロール中は現在のセクションが自動でハイライトされます）。
+
+| セクション | 内容 |
+| --- | --- |
+| 概要 | webhook サーバー／トンネル／LINE／ペルソナ／自発メッセージの状態、公開 URL、ワンクリック起動と停止 |
+| LINE 認証情報 | Channel ID、Channel Secret、Access Token、自動発行、ローディング表示、bot 情報、webhook の適用／テスト、許可リスト |
+| Cloudflare Tunnel | quick／API トークンモード、トークン、hostname、トンネル名、Account／Zone ID、cloudflared のダウンロード、起動／停止、webhook 自動設定、独自の公開 URL |
+| 返信ペルソナ | ペルソナ選択（大肥魚またはプラグインのカスタム）、カスタムペルソナの追加・編集・削除、現在のペルソナをカスタムに複製、強制適用、ユーザーによる切り替え許可、大肥魚を session モードに切り替え、Agent 返信のテスト |
+| 自発メッセージ | オン／オフ、確率、間隔、1 日／1 か月の上限、最短間隔、静かな時間帯、idle、対象ユーザー、プロンプト、今すぐ試送、統計 |
+| ユーザー | LINE ユーザーごとに対応する DSH セッション、専用ワークスペース、現在のペルソナ（直接変更可）、メッセージ数、最終やりとり、メモリ消去／セッション再作成 |
+| 詳細設定 | ポート、Agent の provider/model/effort/cwd/タイムアウト、ユーザーごとのワークスペース（ルート含む）、ウェルカム／エラー／空返信、ログ、開発用 host リロード |
+
+## 設定ファイル
+
+- `<DSH_HOME>/line-bot/config.json`：すべての設定。LINE secret と Cloudflare トークンを含みます（モード 600、平文はパネルに返しません）。
+- `<DSH_HOME>/line-bot/state.json`：LINE ユーザー ↔ DSH セッションの対応、メッセージ数、自発メッセージのカウント、webhook 状態。
+- `<DSH_HOME>/line-bot/logs/YYYY-MM-DD.log`：日次ログ（パネルにも直近 400 行を表示）。
+
+`DSH_HOME` の既定は `~/.dsh` です。
+
+## 動作の仕組み
+
+1. LINE がメッセージを Cloudflare トンネルに POST → プラグインの webhook サーバー（署名検証後すぐに 200 を返す）。
+2. `userId` から対応する DSH セッションとワークスペースを探し（なければ作成）、そのセッションのペルソナを決めます。大肥魚を選んだ場合は大肥魚の HTTP bridge 経由でセッションペルソナを指定し、プラグインのカスタムペルソナを選んだ場合はまず大肥魚にそのセッションで退いてもらい（`none`）、プラグインがカスタムペルソナを system prompt に注入します。
+3. `agents.create`／`agents.resume` で同じ DSH プロセス内に Agent を作成／再開し、`followup` でユーザーメッセージを 1 件送り、ターン終了・サブエージェントの収束・セッションの flush を待ちます。
+4. セッションイベントから最後の assistant テキストを取り出し、LINE の reply で返信します。reply token が切れていたら自動で push に切り替えます。
+5. 自発メッセージのスケジューラーが 1 分ごとに確認し（間隔、静かな時間帯、上限、確率）、条件を満たせば Agent に一言話してもらって push します。
+
+## ペルソナのソース
+
+- **大肥魚（任意）**：`dsh-persona-dafeiyu` がインストールされていると、パネルにそのペルソナ（内蔵＋自作）が表示されます。LINE ではセッション単位で指定され、GUI の他の会話には影響しません。`session` モードである必要があり、パネルが案内してワンクリックで切り替えられます。
+- **プラグイン内蔵のカスタムペルソナ**：ペルソナプラグインは不要です。「返信ペルソナ → カスタムペルソナ」で追加・編集・削除でき、データは `<DSH_HOME>/line-bot/personas.json`（0600）に保存されます。カスタムペルソナを選ぶと、プラグインは（インストールされていれば）大肥魚にそのセッションでの停止を依頼し、カスタムペルソナをその agent の system prompt に注入します。
+- どちらも同じドロップダウンから選べます。ユーザーが LINE コマンドで切り替える場合も同じです（`人設`、`人設 2`、`人設 名前`）。
+
+## ユーザーごとのメモリとペルソナ
+
+- **メモリは共有されません**：LINE ユーザーごとに専用の DSH セッションと、専用の Agent ワークスペース `<DSH_HOME>/line-bot/users/<LINE userId>/` を持ちます。Agent が見るファイル、`AGENTS.md`、ワークスペースメモリはそのユーザー専用で、他人のものは読みません。
+  「詳細設定 → ユーザーごとのフォルダ」でオフにできます（オフにすると全員が `agent.cwd` を共有し、以前の動作に戻ります）。`agent.workspaceRoot` でルートを指定することもできます。
+- **ペルソナを自分で選べる**：「返信ペルソナ → ユーザーによるペルソナ切り替えを許可」がオンのとき、LINE ユーザーは次を送れます。
+  - `人設`（または `人格`／`persona`）→ 利用可能なペルソナと現在のペルソナを一覧表示。
+  - `人設 2` → 一覧番号で切り替え。`人設 阿茶` → 名前で切り替え。`人設 預設` → パネルの既定に戻す。
+  切り替えはそのユーザーだけに適用され、次の返信から反映されます。管理者が「ユーザー」表のペルソナドロップダウンから変更することもできます。
+- **メモリを消去**：「ユーザー」表の「メモリを消去」は、そのユーザーのセッションと専用ワークスペース（中のファイル含む）を削除し、空の状態からやり直します。「セッションを再作成」だけならフォルダは残ります。
+
+## 貼吧（Tieba）学習の自動同期
+
+「刷貼吧」プラグインは 1 日最大 1 回、自分の口調を進化させます（`<DSH_HOME>/tieba-duty/persona.json`）。これは LINE が使う大肥魚ペルソナ（`<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json`）とは別系統で、もともと連動していません。このプラグインは両者をつなげます。
+
+- パネルの「返信ペルソナ → 貼吧学習の同期」で、オン／オフ、同期先ペルソナ（大肥魚のペルソナのみ。既定はオフなので先に 1 つ選んでください）、確認間隔（既定 60 分）、性格値も同期するか、書き込み後に大肥魚プラグインを再読み込みするかを設定できます。この機能には大肥魚プラグインが必要です。
+- 確認のたびに貼吧ペルソナのバージョンを比べ、新しい版のときだけ動作します。書き込み時は対象ペルソナ本文の `## 貼吧學來的口氣` セクションだけを置き換え（なければ追記）、他の手書き内容は上書きしません。性格値（温柔／毒舌／抽象／話癆／発図傾向）も同時に更新できます。
+- 書き込み前に `<DSH_HOME>/line-bot/persona-backups/personas-<時刻>.json` へバックアップします。
+- 書き込み後は Cordis loader 経由で `dsh-persona-dafeiyu` を再起動し、store を読み直させます。再起動に失敗しても警告だけで、本文は既に書き込まれており、次回のプラグイン再読み込みで反映されます。
+- 貼吧プラグインが動いていない、または貼吧ペルソナが存在しない場合はスキップします（`pending` に未同期の理由が出ます）。
+
+## トラブルシューティング
+
+- **パネルに「LINE Bot ランタイムに接続できません」と出る**：webServer がまだ準備できていない可能性があります。再読み込みしてください。それでも失敗する場合は DSH ログの `[line-bot]` を確認します。
+- **webhook テストが失敗する**：LINE コンソールで `Use webhook` がオンか、トンネル URL が https か、ローカルの webhook サーバーが動いているか（パネルが緑か）を確認します。
+- **`lib/*.mjs` の変更が反映されない**：「詳細設定 → host モジュールを再読み込み（開発用）」を押します。プラグインの再インストールは不要です。
+- **貼吧同期が動かない**：パネルの同期状態の `lastError` を確認し、貼吧プラグインのペルソナファイルがあるか、対象ペルソナ id が正しいかを確かめます。「差分をプレビュー」で現在のセクションと書き込まれる内容を比較できます。
+- **cloudflared が見つからない**：「cloudflared をダウンロード」を押すと、公式リリースを `<DSH_HOME>/line-bot/bin/` に取得します。自分で置いて `tunnel.binaryPath` に指定することもできます。
+- **Agent が 403 を返す（モデルが Codex 専用）**：「詳細設定 → Agent モデル」で provider／model を `deepseek-account` / `deepseek-flash` に変更し（ローカルの既定は既にこの設定）、保存して再テストします。
+- **ペルソナが適用されない**：大肥魚を選んだ場合は `session` モードである必要があります。パネルに案内が出るので「大肥魚を session モードに切り替え」を押します（公式にサポートされた設定で、「セッションごとにペルソナを指定できるか」だけに影響します）。プラグインのカスタムペルソナはこの制限を受けません。
+- **Cloudflare が 530 / error code 1016 を返す**：名前付きトンネルの DNS CNAME の向き先は `<tunnel-id>.cfargotunnel.com`（`.cfd.tunnel` ではない）である必要があります。また、そのサブドメインが A レコードと重複しているとエッジがそちらのホストを返すので、DNS には CNAME だけを残してください。
+
+## プライバシー
+
+- このプラグインは、あなたが設定した Cloudflare API と LINE API 以外の第三者サーバーには接続しません。テレメトリもアカウントもありません。
+- 設定と認証情報はすべてこのマシンの `<DSH_HOME>/line-bot/config.json`（モード 600）にのみ保存され、パネルにはマスクされた値だけが表示されます。
+- LINE ユーザーのセッション、ワークスペース、ペルソナ選択はローカルに保存され、アップロードされません。
+- リポジトリと npm パッケージには、誰の認証情報・LINE userId・Cloudflare アカウント・ドメインも含まれていません。
+
+## セキュリティ上の注意
+
+- これは DSH Agent を公開された LINE アカウントにつなぐのと同じです。bot を知っている人は、あなたのコンピューター上のツールを Agent に使わせられます。「許可リストのユーザー ID」に自分の LINE userId を入れて、自分だけが使えるようにすることをおすすめします。
+- 認証情報はすべてローカルの `config.json`（600）に保存され、パネルにはマスクされた値だけが表示されます。API は `127.0.0.1` の DSH webServer にのみ公開されます。
+- Cloudflare API トークンは必要最小限の権限にし、使わなくなったら取り消してください。
+
+## 開発
+
+- host ロジック：`lib/*.mjs`（`util`／`config`／`line-api`／`persona`／`agent-runner`／`webhook-server`／`cloudflare`／`tunnel`／`nudge`／`tieba-sync`／`host`）。
+- パネル：`client.js`（`window.__ModuleLoader__` で `settings.section` を登録）。
+- エントリーポイント：`index.js`（`/api/line-bot` のマウント、dev reload、アンロード時のクリーンアップ）。

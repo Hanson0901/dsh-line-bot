@@ -2,6 +2,8 @@
 
 <p align="center"><img src="icon.svg" width="96" height="96" alt="dsh-line-bot"></p>
 
+**語言 / Languages:** **繁體中文** · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+
 把 LINE 官方帳號（Messaging API）接進 DeepSeek Harness 的插件。回覆由 DSH 的 Agent 在**同一個行程內**產生，等於在 LINE 上跟你的 DSH 助理聊天；人設有兩種來源：有安裝大肥魚（`dsh-persona-dafeiyu`）時可以直接選它的人設；也可以只用插件內建的自訂人設（不需要任何個性外掛）。
 
 內建：

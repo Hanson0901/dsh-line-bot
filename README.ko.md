@@ -1,0 +1,151 @@
+# dsh-line-bot
+
+<p align="center"><img src="icon.svg" width="96" height="96" alt="dsh-line-bot"></p>
+
+**언어 / Languages:** [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+
+LINE 공식 계정(Messaging API)을 DeepSeek Harness에 연결하는 플러그인입니다. 답장은 DSH Agent가 **같은 프로세스 안에서** 생성하므로, LINE에서 내 DSH 어시스턴트와 대화하는 것과 같습니다. 페르소나는 大肥魚(`dsh-persona-dafeiyu`)가 설치되어 있으면 그 페르소나를 그대로 고를 수 있고, 페르소나 플러그인 없이 플러그인 내장 커스텀 페르소나만 사용할 수도 있습니다.
+
+내장 기능:
+
+- **Webhook 서버**: 로컬 `127.0.0.1`에 HTTP 서버를 열고 LINE의 `X-Line-Signature` 검증, 이벤트 중복 제거, 사용자별 큐를 처리합니다.
+- **Cloudflare Tunnel**: 원클릭 quick tunnel(`*.trycloudflare.com`, Cloudflare 계정 불필요) 또는 Cloudflare API 토큰을 붙여 넣어 이름 있는 터널＋DNS를 만들고 고정 URL을 얻습니다. URL이 준비되면 webhook 엔드포인트를 LINE에 다시 쓰고 `webhook/test`를 실행합니다.
+- **LINE 자격 증명**: Channel ID와 Channel Secret을 입력하면 access token을 자동 발급합니다(`/v2/oauth/accessToken`, 약 30일, 만료 전 자동 갱신). 기존 Channel Access Token을 붙여 넣어도 됩니다.
+- **페르소나**: 패널에서 大肥魚 플러그인의 내장／커스텀 페르소나를 고르거나, 플러그인 내장 커스텀 페르소나(`<DSH_HOME>/line-bot/personas.json`, 추가/편집/가져오기)를 쓸 수 있습니다. 페르소나는 세션 단위로 지정되며 GUI의 다른 대화에는 영향을 주지 않습니다.
+- **능동 메시지**: 플러그인 내장 스케줄러(launchd 불필요). 확률, 간격, 일일/월간 상한, 최소 간격, 조용한 시간대, 상대가 얼마나 조용했을 때 말을 걸지, 대상 사용자, 프롬프트를 설정할 수 있습니다. Agent가 지금은 아니라고 판단하면 `SKIP`을 반환해 건너뜁니다.
+- **전체 설정 패널**: 모든 설정이 "설정 → LINE Bot"에 있으며 `<DSH_HOME>/line-bot/config.json`(모드 600)에 저장됩니다.
+
+> "LINE Business ID로 로그인해서 패널에서 bot을 만드는" 것에 대해: LINE은 2024-09부터 Messaging API 채널 생성을 [LINE Official Account Manager](https://manager.line.biz/)에서 수동으로만 허용하며 공개 API가 없습니다. LINE Login도 신원 확인일 뿐 공식 계정 관리 권한을 얻을 수 없습니다. 그래서 패널은 bot을 만들지 않지만, 올바른 진입 링크를 알려 주고 "Channel ID / Secret을 얻은 뒤"의 모든 단계(토큰 발급, webhook 설정, 테스트)를 자동화합니다.
+
+## 설치
+
+요구 사항: DeepSeek Harness **≥ 0.2.0-rc.1**, Node.js **≥ 22**. 페르소나 플러그인(大肥魚 `dsh-persona-dafeiyu`)은 **선택**입니다 — 설치하지 않아도 플러그인 내장 커스텀 페르소나를 쓸 수 있습니다.
+
+### 방법 1: 패널에서 설치(권장)
+
+DSH → **설정 → 플러그인 → bundle 설치**에서 `dsh-line-bot`을 입력해 설치하고 페이지를 새로 고칩니다. 설정 왼쪽에 **LINE Bot**이 생깁니다.
+
+### 방법 2: npx 원라인 설치
+
+먼저 DSH를 완전히 종료합니다(데스크톱 앱은 창을 닫고 메뉴 막대／프로세스가 남아 있지 않은지 확인). 그다음 실행합니다.
+
+```bash
+npx dsh-line-bot install
+```
+
+어느 profile에 설치할지 자동으로 판단하고(기본 `desktop`, `--profile <이름>`으로 지정 가능), DSH 내장 pnpm으로 패키지를 설치한 뒤 bundle을 profile에 추가하고 DSH 재시작을 안내합니다.
+
+```bash
+npx dsh-line-bot status      # 어느 profile에 설치되어 있고 활성화되어 있는지
+npx dsh-line-bot uninstall   # 제거(설정과 자격 증명은 유지)
+```
+
+### 방법 3: 수동
+
+```bash
+dsh plugin --profile desktop add dsh-line-bot
+```
+
+그다음 `~/.dsh/profiles/desktop/package.json`의 `dsh.profile.bundles` 배열에 `dsh-line-bot`을 추가합니다(`npx dsh-line-bot install`이 하는 일 참고). 패널 설치를 써도 됩니다.
+
+> 아직 npm에 배포하지 않았다면 GitHub에서 바로 설치할 수 있습니다.
+>
+> ```bash
+> npx github:Hanson0901/dsh-line-bot install --spec github:Hanson0901/dsh-line-bot
+> ```
+>
+> 소스에서 설치하려면 `git clone https://github.com/Hanson0901/dsh-line-bot.git` 후 DSH 패널의 "bundle 설치"에서 그 폴더를 선택하거나 `dsh plugin --profile desktop add /path/to/dsh-line-bot`을 실행합니다.
+
+## 첫 구동(5단계)
+
+1. **자격 증명 준비**: [LINE Official Account Manager](https://manager.line.biz/)에서 공식 계정 생성 → [LINE Developers Console](https://developers.line.biz/console/)에서 Messaging API 채널 생성(또는 선택) → "Messaging API" 탭에서 **Use webhook** 켜기 → **Channel ID**와 **Channel secret** 복사.
+2. **패널에 입력**: "LINE Bot → LINE 자격 증명"에 Channel ID와 Channel Secret을 붙여 넣고 "변경 저장" → "검증하고 bot 정보 읽기"를 누릅니다. 성공하면 bot 이름과 Basic ID가 표시됩니다.
+3. **webhook 서버 시작**: "개요"에서 "모두 시작"을 누르거나 "시작"을 눌러 webhook 서버와 터널을 함께 올립니다(기본값은 자동 시작).
+4. **터널 열기**: Quick tunnel은 "터널 시작"만 누르면 됩니다. 고정 URL이 필요하면 "Cloudflare Tunnel"에서 API 토큰을 붙여 넣고 → "API 토큰 검증" → "터널과 DNS 생성／업데이트"(토큰 권한: Account → Cloudflare Tunnel → Edit, Zone → DNS → Edit, Zone → Zone → Read). quick tunnel은 재시작할 때마다 URL이 바뀌며(플러그인이 새 URL을 LINE webhook에 자동으로 다시 씁니다), 이름 있는 터널의 URL은 고정입니다.
+5. **webhook 자동 설정**: 터널이 준비되면 자동으로 LINE에 PUT합니다. 실패하면 "터널 URL을 webhook에 적용" → "webhook 테스트"를 누릅니다. 그다음 LINE에서 bot을 친구 추가하고 메시지를 보내면 됩니다.
+
+## 패널 구성
+
+패널 맨 위에는 **고정(sticky) 저장 바**가 있어 어디까지 스크롤해도 "변경 저장／새로 고침"이 보입니다. 그 아래에는 빠른 이동 메뉴가 있으며 누르면 해당 섹션으로 이동합니다(스크롤 중에는 현재 섹션이 자동으로 강조됩니다).
+
+| 섹션 | 내용 |
+| --- | --- |
+| 개요 | webhook 서버／터널／LINE／페르소나／능동 메시지 상태, 공개 URL, 원클릭 기동과 시작/중지 |
+| LINE 자격 증명 | Channel ID, Channel Secret, Access Token, 자동 발급, 로딩 표시, bot 정보, webhook 적용/테스트, 허용 목록 |
+| Cloudflare Tunnel | quick／API 토큰 모드, 토큰, hostname, 터널 이름, Account／Zone ID, cloudflared 다운로드, 시작/중지, webhook 자동 설정, 직접 제공하는 공개 URL |
+| 답장 페르소나 | 페르소나 선택(大肥魚 또는 플러그인 커스텀), 커스텀 페르소나 추가/편집/삭제, 현재 페르소나를 커스텀으로 복사, 강제 적용, 사용자 직접 전환 허용, 大肥魚를 session 모드로 전환, Agent 답장 테스트 |
+| 능동 메시지 | 켜기/끄기, 확률, 간격, 일일/월간 상한, 최소 간격, 조용한 시간대, idle, 대상 사용자, 프롬프트, 지금 시험 발송, 통계 |
+| 사용자 | LINE 사용자별 DSH 세션, 전용 작업 폴더, 현재 페르소나(직접 변경 가능), 메시지 수, 마지막 상호작용, 기억 지우기／세션 재설정 |
+| 고급 설정 | 포트, Agent provider/model/effort/cwd/타임아웃, 사용자별 작업 폴더(루트 포함), 환영／오류／빈 답장, 로그, 개발용 host 리로드 |
+
+## 설정 파일
+
+- `<DSH_HOME>/line-bot/config.json`: 모든 설정. LINE secret과 Cloudflare 토큰 포함(모드 600, 평문은 패널에 반환하지 않음).
+- `<DSH_HOME>/line-bot/state.json`: LINE 사용자 ↔ DSH 세션 매핑, 메시지 수, 능동 메시지 카운터, webhook 상태.
+- `<DSH_HOME>/line-bot/logs/YYYY-MM-DD.log`: 일별 로그(패널에도 최근 400줄 표시).
+
+`DSH_HOME`의 기본값은 `~/.dsh`입니다.
+
+## 동작 방식
+
+1. LINE이 메시지를 Cloudflare 터널로 POST → 플러그인 webhook 서버(서명 검증 후 즉시 200 반환).
+2. `userId`로 해당 DSH 세션과 작업 폴더를 찾거나 만들고, 그 세션의 페르소나를 정합니다. 大肥魚를 고르면 大肥魚의 HTTP bridge로 세션 페르소나를 지정하고, 플러그인 커스텀 페르소나를 고르면 먼저 大肥魚에게 그 세션에서 물러나 달라고 한 뒤(`none`) 플러그인이 커스텀 페르소나를 system prompt에 주입합니다.
+3. `agents.create`／`agents.resume`로 같은 DSH 프로세스 안에서 Agent를 만들거나 이어 받고, `followup`으로 사용자 메시지 하나를 보낸 뒤 turn 종료, 하위 에이전트 수렴, 세션 flush를 기다립니다.
+4. 세션 이벤트에서 마지막 assistant 텍스트를 꺼내 LINE reply로 답장합니다. reply token이 만료되었으면 자동으로 push로 전환합니다.
+5. 능동 메시지 스케줄러가 1분마다 확인하고(간격, 조용한 시간대, 상한, 확률) 조건을 만족하면 Agent에게 한마디 하게 한 뒤 push합니다.
+
+## 페르소나 출처
+
+- **大肥魚(선택)**: `dsh-persona-dafeiyu`가 설치되어 있으면 패널에 그 페르소나(내장＋직접 만든 것)가 나옵니다. LINE에서는 세션 단위로 지정되며 GUI의 다른 대화는 바뀌지 않습니다. `session` 모드여야 하며, 패널이 안내하고 원클릭으로 전환할 수 있습니다.
+- **플러그인 내장 커스텀 페르소나**: 페르소나 플러그인이 필요 없습니다. "답장 페르소나 → 커스텀 페르소나"에서 추가/편집/삭제할 수 있고 데이터는 `<DSH_HOME>/line-bot/personas.json`(0600)에 저장됩니다. 커스텀 페르소나를 고르면 플러그인은 (설치되어 있다면) 大肥魚에게 그 세션에서 중지해 달라고 한 뒤 커스텀 페르소나를 해당 agent의 system prompt에 주입합니다.
+- 두 종류 모두 같은 드롭다운에서 선택할 수 있습니다. 사용자가 LINE 명령으로 바꾸는 경우도 같습니다(`人設`, `人設 2`, `人設 이름`).
+
+## 사용자별 기억과 페르소나
+
+- **기억은 공유되지 않습니다**: LINE 사용자마다 자신의 DSH 세션과 전용 Agent 작업 폴더 `<DSH_HOME>/line-bot/users/<LINE userId>/`가 있습니다. Agent가 보는 파일, `AGENTS.md`, 작업 공간 기억은 그 사용자 전용이며 다른 사람의 것은 읽지 않습니다.
+  "고급 설정 → 사용자별 폴더"에서 끌 수 있습니다(끄면 모두 `agent.cwd`를 공유해 예전 동작으로 돌아갑니다). `agent.workspaceRoot`로 루트를 지정할 수도 있습니다.
+- **사용자가 페르소나를 직접 선택 가능**: "답장 페르소나 → 사용자 직접 전환 허용"이 켜져 있으면 LINE 사용자는 다음을 보낼 수 있습니다.
+  - `人設`(또는 `人格`／`persona`) → 사용 가능한 페르소나와 현재 페르소나 목록.
+  - `人設 2` → 목록 번호로 전환. `人設 阿茶` → 이름으로 전환. `人設 預設` → 패널 기본값으로 복귀.
+  전환은 그 사용자에게만 적용되며 다음 답장부터 반영됩니다. 관리자가 "사용자" 표의 페르소나 드롭다운에서 바꿀 수도 있습니다.
+- **기억 지우기**: "사용자" 표에서 "기억 지우기"를 누르면 그 사용자의 세션과 전용 작업 폴더(안의 파일 포함)가 삭제되어 빈 상태에서 다시 시작합니다. "세션 재설정"만 누르면 폴더는 유지됩니다.
+
+## 貼吧(Tieba) 학습 자동 동기화
+
+"刷貼吧" 플러그인은 하루에 최대 한 번 자신의 말투를 진화시킵니다(`<DSH_HOME>/tieba-duty/persona.json`). 이것은 LINE이 쓰는 大肥魚 페르소나(`<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json`)와 별개 계통이라 원래 서로 연결되지 않습니다. 이 플러그인이 둘을 이어 줍니다.
+
+- 패널의 "답장 페르소나 → 貼吧 학습 동기화"에서 켜기/끄기, 동기화 대상 페르소나(大肥魚 페르소나만; 기본은 꺼져 있으니 먼저 하나 고르세요), 확인 간격(기본 60분), 성격 수치 동기화 여부, 기록 후 大肥魚 플러그인 리로드 여부를 설정할 수 있습니다. 이 기능에는 大肥魚 플러그인이 필요합니다.
+- 확인할 때마다 貼吧 페르소나 버전을 비교해 새 버전일 때만 동작합니다. 기록할 때는 대상 페르소나 본문의 `## 貼吧學來的口氣` 섹션만 바꾸고(없으면 덧붙임) 다른 직접 쓴 내용은 덮어쓰지 않습니다. 성격 수치(温柔／毒舌／抽象／話癆／發図傾向)도 함께 갱신할 수 있습니다.
+- 기록 전 `<DSH_HOME>/line-bot/persona-backups/personas-<시간>.json`으로 백업합니다.
+- 기록 후 기본적으로 Cordis loader를 통해 `dsh-persona-dafeiyu`를 재시작해 store를 다시 읽게 합니다. 재시작 실패는 경고만 남기고, 본문은 이미 기록되어 다음 플러그인 리로드 때 반영됩니다.
+- 貼吧 플러그인이 실행 중이 아니거나 貼吧 페르소나가 없으면 확인을 건너뜁니다(`pending`에 미동기화 이유 표시).
+
+## 문제 해결
+
+- **패널에 "LINE Bot 런타임에 연결할 수 없습니다"**: webServer가 아직 준비되지 않았을 수 있습니다. 새로 고침하세요. 그래도 실패하면 DSH 로그의 `[line-bot]` 메시지를 확인합니다.
+- **webhook 테스트 실패**: LINE 콘솔에서 `Use webhook`이 켜져 있는지, 터널 URL이 https인지, 로컬 webhook 서버가 실행 중인지(패널이 초록인지) 확인합니다.
+- **`lib/*.mjs` 수정이 반영되지 않음**: "고급 설정 → host 모듈 리로드(개발용)"를 누르세요. 플러그인을 다시 설치할 필요는 없습니다.
+- **貼吧 동기화가 동작하지 않음**: 패널 동기화 상태의 `lastError`를 보고, 貼吧 플러그인의 페르소나 파일이 있는지, 대상 페르소나 id가 맞는지 확인합니다. "차이 미리 보기"로 현재 섹션과 기록될 내용을 비교할 수 있습니다.
+- **cloudflared를 찾을 수 없음**: "cloudflared 다운로드"를 누르면 공식 릴리스를 `<DSH_HOME>/line-bot/bin/`에 받습니다. 직접 넣고 `tunnel.binaryPath`로 지정해도 됩니다.
+- **Agent가 403 반환(모델이 Codex 전용)**: "고급 설정 → Agent 모델"에서 provider／model을 `deepseek-account` / `deepseek-flash`로 바꾸고(로컬 기본값은 이미 이렇게 설정됨) 저장한 뒤 다시 테스트합니다.
+- **페르소나가 적용되지 않음**: 大肥魚를 고른 경우 `session` 모드여야 합니다. 패널이 안내하며 "大肥魚를 session 모드로 전환"을 누르면 됩니다(공식 지원 설정이며 "세션별 페르소나 지정 가능 여부"에만 영향을 줍니다). 플러그인 커스텀 페르소나는 이 제한을 받지 않습니다.
+- **Cloudflare가 530 / error code 1016 반환**: 이름 있는 터널의 DNS CNAME 대상은 `<tunnel-id>.cfargotunnel.com`이어야 합니다(`.cfd.tunnel` 아님). 또한 그 하위 도메인이 A 레코드와 겹치면 엣지가 그 호스트로 먼저 응답하므로 DNS에 CNAME 하나만 남기세요.
+
+## 개인정보
+
+- 이 플러그인은 사용자가 설정한 Cloudflare API와 LINE API 외에는 어떤 제3자 서버에도 연결하지 않습니다. 텔레메트리도 계정도 없습니다.
+- 모든 설정과 자격 증명은 이 컴퓨터의 `<DSH_HOME>/line-bot/config.json`(모드 600)에만 저장되며, 패널에는 마스킹된 값만 표시됩니다.
+- LINE 사용자의 세션, 작업 폴더, 페르소나 선택은 로컬에 저장되며 업로드되지 않습니다.
+- 저장소와 npm 패키지에는 누구의 자격 증명, LINE userId, Cloudflare 계정, 도메인도 포함되어 있지 않습니다.
+
+## 보안 안내
+
+- 이는 DSH Agent를 공개된 LINE 계정에 연결하는 것과 같습니다. bot을 아는 사람은 당신의 컴퓨터에 있는 도구를 Agent가 사용하게 할 수 있습니다. "허용 목록 사용자 ID"에 자신의 LINE userId를 넣어 자신만 사용하도록 하는 것을 권장합니다.
+- 모든 자격 증명은 로컬 `config.json`(600)에 저장되고 패널에는 마스킹된 값만 보입니다. API는 `127.0.0.1`의 DSH webServer에만 열립니다.
+- Cloudflare API 토큰은 필요한 권한만 주고, 사용하지 않을 때는 폐기하세요.
+
+## 개발
+
+- host 로직: `lib/*.mjs`(`util`／`config`／`line-api`／`persona`／`agent-runner`／`webhook-server`／`cloudflare`／`tunnel`／`nudge`／`tieba-sync`／`host`).
+- 패널: `client.js`(`window.__ModuleLoader__`로 `settings.section` 등록).
+- 진입점: `index.js`(`/api/line-bot` 마운트, dev reload, 언로드 정리).

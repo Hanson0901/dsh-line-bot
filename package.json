@@ -20,6 +20,7 @@
     "locale",
     "icon.svg",
     "README.md",
+    "README.*.md",
     "bin",
     "LICENSE",
     "CHANGELOG.md"
