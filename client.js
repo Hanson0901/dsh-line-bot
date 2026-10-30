@@ -292,6 +292,12 @@ window.__ModuleLoader__.load({
       'persona-mode': '切換人設模式',
       'tieba-preview': '預覽貼吧同步差異',
       'tieba-sync': '同步貼吧學習',
+      'local-persona-list': '讀取自訂人設',
+      'local-persona-get': '讀取自訂人設內容',
+      'local-persona-add': '新增自訂人設',
+      'local-persona-update': '更新自訂人設',
+      'local-persona-remove': '刪除自訂人設',
+      'local-persona-import': '匯入大肥魚人設',
       'nudge-test': '主動傳訊試跑',
       'agent-test': '測試 Agent 回覆',
       'user-reset': '重設使用者',
@@ -307,6 +313,7 @@ window.__ModuleLoader__.load({
       const [toast, setToast] = useState(null)
       const [active, setActive] = useState('overview')
       const [syncPreview, setSyncPreview] = useState(null)
+      const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
       const dirty = useMemo(() => {
         if (!status || !draft) return false
@@ -420,6 +427,49 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function editLocalPersona(item) {
+        setBusy('local-persona-get')
+        setToast(null)
+        try {
+          const value = await jpost('/action', { action: 'local-persona-get', payload: { id: item.id } })
+          const result = value?.result || {}
+          setLocalEdit({ id: item.id, name: result.name || item.name, text: result.text || '' })
+        } catch (err) {
+          setToast({ kind: 'error', text: `讀取人設失敗：${err.message || err}` })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function saveLocalPersona() {
+        const name = String(localEdit.name || '').trim()
+        const text = String(localEdit.text || '').trim()
+        if (!name || !text) {
+          setToast({ kind: 'error', text: '請填入人設名稱與內容' })
+          return
+        }
+        await act(localEdit.id ? 'local-persona-update' : 'local-persona-add', {
+          ...(localEdit.id ? { id: localEdit.id } : {}),
+          name,
+          text,
+        })
+        setLocalEdit({ id: '', name: '', text: '' })
+      }
+
+      async function removeLocalPersona(item) {
+        if (typeof window !== 'undefined' && !window.confirm(`刪除自訂人設「${item.name}」？`)) return
+        await act('local-persona-remove', { id: item.id })
+        if (localEdit.id === item.id) setLocalEdit({ id: '', name: '', text: '' })
+      }
+
+      async function importPersona() {
+        if (!personaCfg.id || selectedIsLocal) {
+          setToast({ kind: 'error', text: '請先在「使用的人設」選一個大肥魚的人設，再按複製。' })
+          return
+        }
+        await act('local-persona-import', { id: personaCfg.id })
+      }
+
       async function applySync() {
         setBusy('tieba-sync')
         setToast(null)
@@ -484,12 +534,18 @@ window.__ModuleLoader__.load({
       const nudgeCfg = cfg.nudge || {}
       const syncCfg = cfg.sync || {}
       const syncStats = status.sync || {}
-      const syncPersonaOptions = personaOptions.filter((item) => !item.builtin)
-      const syncTarget = syncCfg.targetPersonaId || (syncPersonaOptions[0] && syncPersonaOptions[0].id) || ''
       const runtime = status
       const persona = status.persona || {}
       const personaOptions = Array.isArray(persona.list) ? persona.list : []
-      const selectedName = personaOptions.find((item) => item.id === personaCfg.id)?.name || personaCfg.id || '大肥魚'
+      const personaLocal = Array.isArray(persona.local) ? persona.local : []
+      const personaCatalog = Array.isArray(persona.catalog) && persona.catalog.length
+        ? persona.catalog
+        : [...personaOptions, ...personaLocal]
+      const selectedPersona = personaCatalog.find((item) => item.id === personaCfg.id) || null
+      const selectedName = selectedPersona?.name || personaCfg.id || '大肥魚'
+      const selectedIsLocal = String(personaCfg.id || '').startsWith('local:')
+      const syncPersonaOptions = personaOptions.filter((item) => !item.builtin)
+      const syncTarget = syncCfg.targetPersonaId || (syncPersonaOptions[0] && syncPersonaOptions[0].id) || ''
       const bot = status.line?.bot || null
       const webhook = status.line?.webhook || null
       const tunnelStatus = status.tunnel || {}
@@ -649,30 +705,62 @@ window.__ModuleLoader__.load({
         // 4. 人設
         h(
           Card,
-          { id: sectionDomId('persona'), title: '回覆人設（大肥魚插件）', desc: 'LINE 的回覆會套用這裡選的人設。預設是大肥魚；清單來自 dsh-persona-dafeiyu 插件。' },
-          persona.available === false || persona.error
-            ? h('div', { style: S.warnBox }, `讀不到大肥魚插件：${persona.error || '插件未啟用'}。仍可回覆，但不會套用人設。`)
-            : null,
+          { id: sectionDomId('persona'), title: '回覆人設', desc: 'LINE 的回覆會套用這裡選的人設。來源有兩種：大肥魚插件（有安裝時）、插件自己的自訂人設（不依賴任何外掛）。' },
+          persona.warning ? h('div', { style: S.warnBox }, persona.warning) : null,
+          persona.error ? h('div', { style: S.warnBox }, `讀不到大肥魚插件：${persona.error}`) : null,
           h('div', { style: S.grid },
-            h(Field, { label: '使用的人設' },
-              h('select', { value: personaCfg.id || 'dafeiyu', onChange: (event) => update({ persona: { id: event.target.value } }), style: S.input },
+            h(Field, { label: `使用的人設（${personaCatalog.length} 個可選）` },
+              h('select', { value: personaCfg.id || '', onChange: (event) => update({ persona: { id: event.target.value } }), style: S.input },
                 personaOptions.length
-                  ? personaOptions.map((item) => h('option', { key: item.id, value: item.id }, `${item.name}${item.builtin ? '（內建）' : ''} · ${item.chars} 字`))
-                  : h('option', { value: personaCfg.id || 'dafeiyu' }, selectedName))),
-            h(Field, { label: '人設模式' }, h('div', { style: { fontSize: 12, paddingTop: 4 } }, `${persona.mode || '未知'}${persona.mode === 'session' ? '（可逐 session 指定）' : '（目前不是 session 模式，指定可能無效）'}`)),
+                  ? h('optgroup', { label: '大肥魚插件' },
+                      personaOptions.filter((item) => item.enabled !== false).map((item) =>
+                        h('option', { key: item.id, value: item.id }, `${item.name}${item.builtin ? '（內建）' : ''} · ${item.chars} 字`)))
+                  : null,
+                personaLocal.length
+                  ? h('optgroup', { label: '插件自訂' },
+                      personaLocal.map((item) => h('option', { key: item.id, value: item.id }, `${item.name} · ${item.chars} 字`)))
+                  : null,
+                (!personaCatalog.length)
+                  ? h('option', { value: personaCfg.id || '' }, selectedName)
+                  : null)),
+            h(Field, { label: '人設來源' },
+              h('div', { style: { fontSize: 12, paddingTop: 4 } },
+                selectedIsLocal
+                  ? '插件自訂人設：每一輪由插件注入 system prompt，不需要任何外掛。'
+                  : `大肥魚 · ${persona.mode || '未知'}${persona.mode === 'session' ? '（可逐 session 指定）' : '（目前不是 session 模式，指定可能無效）'}`)),
           ),
-          h(Toggle, { checked: personaCfg.enforce !== false, onChange: (value) => update({ persona: { enforce: value } }), label: '強制使用選擇的人設', hint: '若大肥魚不是 session 模式，面板會提示切換' }),
+          h(Toggle, { checked: personaCfg.enforce !== false, onChange: (value) => update({ persona: { enforce: value } }), label: '強制使用選擇的人設', hint: '關掉＝完全不套用人設（連大肥魚也不指定）' }),
           h(Toggle, { checked: personaCfg.allowUserSwitch !== false, onChange: (value) => update({ persona: { allowUserSwitch: value } }), label: '允許使用者自己換人設', hint: '開啟後，LINE 使用者可傳「人設」看清單、「人設 2」或「人設 阿茶」切換；只影響他自己' }),
           h('div', { style: S.note }, '每位使用者的人設分開儲存（面板「使用者」區可個別調整或重設）。沒有自己選過的人，會用上面這個預設人設。'),
           h('div', { style: S.row },
-            h(Btn, { onClick: () => act('persona-status'), disabled: !!busy, tone: 'primary' }, '重新讀取人設清單'),
-            h(Btn, { onClick: () => act('persona-mode', { mode: 'session' }), disabled: !!busy }, '切換到大肥魚 session 模式'),
-            h(Btn, { onClick: () => act('agent-test'), disabled: !!busy }, busy === 'agent-test' ? '測試中…' : '測試 Agent 回覆'),
+            h(Btn, { onClick: () => act('persona-status'), disabled: !!busy }, '重新讀取人設清單'),
+            h(Btn, { onClick: () => act('persona-mode', { mode: 'session' }), disabled: !!busy || persona.bridgeAvailable === false }, '切換大肥魚到 session 模式'),
+            h(Btn, { onClick: () => act('agent-test'), disabled: !!busy, tone: 'primary' }, busy === 'agent-test' ? '測試中…' : '測試 Agent 回覆'),
           ),
-          personaOptions.length
-            ? h('div', { style: S.hint }, `可用人設：${personaOptions.map((item) => item.name).join('、')}`)
-            : h('div', { style: S.hint }, '目前讀不到清單；按「重新讀取人設清單」試試。'),
-          h('div', { style: S.hint }, '切換 session 模式會改變大肥魚插件在全域的行為（讓每個 session 可各自指定人設），這是插件官方支援的設定。'),
+          h('div', { style: S.hint }, '切換 session 模式會改變大肥魚插件在全域的行為（每個 session 可各自指定人設），這是它官方支援的設定。'),
+          h('div', { style: { ...S.panelBox, marginTop: 4 } },
+            h('div', { style: S.fieldTitle }, '自訂人設（插件內建，不依賴外掛）'),
+            h('div', { style: S.hint }, `存在 ${persona.localPath || '<資料夾>/personas.json'}。可以新增／編輯／刪除，或把目前的大肥魚人設複製一份過來再改。`),
+            h('div', { style: S.grid },
+              h(Field, { label: '名稱' }, h(Text, { value: localEdit.name, onChange: (value) => setLocalEdit((prev) => ({ ...prev, name: value })), placeholder: '例如：我的助手' })),
+            ),
+            h(Field, { label: '人設內容（會放進 system prompt）' },
+              h(Area, { value: localEdit.text, onChange: (value) => setLocalEdit((prev) => ({ ...prev, text: value })), rows: 6, placeholder: '寫下它的身分、說話方式、底線…' })),
+            h('div', { style: S.row },
+              h(Btn, { onClick: saveLocalPersona, disabled: !!busy, tone: 'primary' }, localEdit.id ? '儲存變更' : '新增人設'),
+              localEdit.id ? h(Btn, { onClick: () => setLocalEdit({ id: '', name: '', text: '' }), disabled: !!busy }, '取消編輯') : null,
+              h(Btn, { onClick: importPersona, disabled: !!busy || selectedIsLocal }, '把目前人設複製成自訂'),
+            ),
+            personaLocal.length
+              ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 } },
+                  personaLocal.map((item) =>
+                    h('div', { key: item.id, style: { ...S.row, justifyContent: 'space-between' } },
+                      h('span', { style: { fontSize: 12 } }, `${item.name}（${item.chars} 字）`),
+                      h('div', { style: S.row },
+                        h(Btn, { onClick: () => editLocalPersona(item), disabled: !!busy }, '編輯'),
+                        h(Btn, { onClick: () => removeLocalPersona(item), disabled: !!busy, tone: 'danger' }, '刪除')))))
+              : h('div', { style: S.hint }, '還沒有自訂人設；填上面的名稱與內容後按「新增人設」。'),
+          ),
         ),
 
         // 4b. 貼吧學習同步
@@ -758,8 +846,8 @@ window.__ModuleLoader__.load({
                         style: { ...S.input, padding: '3px 6px', fontSize: 12 },
                         disabled: !!busy,
                       },
-                        (personaOptions.length ? personaOptions : [{ id: user.personaId, name: user.personaName || user.personaId }]).map((item) =>
-                          h('option', { key: item.id, value: item.id }, item.name)))),
+                        (personaCatalog.length ? personaCatalog : [{ id: user.personaId, name: user.personaName || user.personaId }]).map((item) =>
+                          h('option', { key: item.id, value: item.id }, `${item.name}${item.source === 'local' ? '（自訂）' : ''}`)))),
                     h('td', { style: S.td }, fmtTime(user.lastAt)),
                     h('td', { style: S.td }, h('div', { style: S.row },
                       h(Btn, { onClick: () => act('user-reset', { userId: user.userId }), disabled: !!busy, tone: 'danger' }, '重設 session'),

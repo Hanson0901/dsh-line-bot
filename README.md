@@ -1,13 +1,13 @@
 # dsh-line-bot
 
-把 LINE 官方帳號（Messaging API）接進 DeepSeek Harness 的插件。回覆由 DSH 的 Agent 在**同一個行程內**產生，等於在 LINE 上跟你的 DSH 助理聊天；預設套用大肥魚（`dsh-persona-dafeiyu`）的人設，也可以在面板改選其他人設。
+把 LINE 官方帳號（Messaging API）接進 DeepSeek Harness 的插件。回覆由 DSH 的 Agent 在**同一個行程內**產生，等於在 LINE 上跟你的 DSH 助理聊天；人設有兩種來源：有安裝大肥魚（`dsh-persona-dafeiyu`）時可以直接選它的人設；也可以只用插件內建的自訂人設（不需要任何個性外掛）。
 
 內建：
 
 - **Webhook 伺服器**：在本機 `127.0.0.1` 開一個 HTTP server，處理 LINE 的 `X-Line-Signature` 驗章、事件去重、每位使用者各自的佇列。
 - **Cloudflare Tunnel**：一鍵開 quick tunnel（`*.trycloudflare.com`，免 Cloudflare 帳號），或貼上 Cloudflare API Token 建立具名隧道＋DNS，取得固定網址；取得網址後自動把 webhook 端點寫回 LINE 並跑一次 `webhook/test`。
 - **LINE 憑證**：填 Channel ID＋Channel Secret 就能自動簽發 access token（`/v2/oauth/accessToken`，約 30 天，快到期會自動續簽）；也可以直接貼上既有的 Channel Access Token。
-- **人設**：預設大肥魚；面板可選大肥魚插件裡任何一個內建／自訂人設。人設是「逐 session」指定，不會改到你 GUI 裡其他對話的人設。
+- **人設**：面板可選大肥魚插件裡任何一個內建／自訂人設，或插件內建的自訂人設（存在 `<DSH_HOME>/line-bot/personas.json`，可新增／編輯／匯入）。人設是「逐 session」指定，不會改到你 GUI 裡其他對話的人設。
 - **主動傳訊**：插件內建排程器（不用 launchd），可調機率、間隔、每日／每月上限、最短間隔、安靜時段、對方安靜多久才可打擾、指定對象與提示詞；Agent 覺得不適合時可以回 `SKIP` 跳過。
 - **完整設定面板**：所有設定都在「設定 → LINE Bot」裡，存到 `<DSH_HOME>/line-bot/config.json`（權限 600）。
 
@@ -15,7 +15,7 @@
 
 ## 安裝
 
-需求：DeepSeek Harness **≥ 0.2.0-rc.1**、Node.js **≥ 22**。
+需求：DeepSeek Harness **≥ 0.2.0-rc.1**、Node.js **≥ 22**。人設外掛（大肥魚 `dsh-persona-dafeiyu`）是**選用**的——不裝也能用插件內建的自訂人設。
 
 ### 方式一：面板安裝（推薦）
 
@@ -69,7 +69,7 @@ dsh plugin --profile desktop add dsh-line-bot
 | 狀態總覽 | webhook server／隧道／LINE／人設／主動傳訊的綠燈狀態、公開網址、一鍵上線與啟停 |
 | LINE 憑證 | Channel ID、Channel Secret、Access Token、自動簽發、loading 動畫、bot 資訊、webhook 套用／測試、白名單 |
 | Cloudflare Tunnel | quick／API Token 模式、Token、hostname、隧道名稱、Account／Zone ID、下載 cloudflared、啟停、自動設定 webhook、自行提供的公開網址 |
-| 回覆人設 | 選擇大肥魚插件的人設、強制套用、允許使用者自己換人設、切換 session 模式、測試 Agent 回覆；同區下方「貼吧學習同步」可開關每日自動寫回、預覽差異、立即同步 |
+| 回覆人設 | 選擇人設（大肥魚或插件自訂）、新增／編輯／刪除自訂人設、把目前人設複製成自訂、強制套用、允許使用者自己換人設、切換大肥魚 session 模式、測試 Agent 回覆 |
 | 主動傳訊 | 開關、機率、間隔、每日／每月上限、最短間隔、安靜時段、idle、指定對象、提示詞、立即試傳、統計 |
 | 使用者 | 每位 LINE 使用者對應的 DSH session、專屬工作資料夾、目前人設（可直接改）、訊息數、上次互動、清空記憶／重設 session |
 | 進階設定 | 連接埠、Agent provider/model/effort/cwd/逾時、一人一個工作資料夾（含根目錄）、歡迎／錯誤／空回覆、日誌、開發用 host 重新載入 |
@@ -85,10 +85,16 @@ dsh plugin --profile desktop add dsh-line-bot
 ## 運作方式
 
 1. LINE 把訊息 POST 到 Cloudflare 隧道 → 插件 webhook server（驗章後立刻回 200）。
-2. 依 `userId` 找到（或建立）對應的 DSH session 與工作資料夾，先透過大肥魚插件的 HTTP bridge 把這個 session 的人設釘好（使用者自己選的優先，否則用面板預設）。
+2. 依 `userId` 找到（或建立）對應的 DSH session 與工作資料夾，決定這個 session 的人設：選大肥魚時透過它的 HTTP bridge 指定 session 人設；選插件自訂人設時，先請大肥魚在該 session 讓開（`none`），再由插件把自訂人設注入 system prompt。
 3. 用 `agents.create`／`agents.resume` 在同一個 DSH 行程內建立／接續 Agent，`followup` 一則使用者訊息，等到 turn 結束、子代理收斂、session flush。
 4. 從 session 事件取出最後一段 assistant 文字，用 LINE reply 回覆；reply token 過期就自動改 push。
 5. 主動傳訊排程器每分鐘檢查一次（間隔、安靜時段、上限、機率），符合條件就請 Agent 主動說一句，再 push 出去。
+
+## 人設來源
+
+- **大肥魚（選用）**：有安裝 `dsh-persona-dafeiyu` 時，面板會列出它的人設（內建＋你自訂的），LINE 會逐 session 指定，不會改到 GUI 其他對話。需要它處於 `session` 模式；面板會提示並可一鍵切換。
+- **插件內建自訂人設**：不需要任何個性外掛。面板「回覆人設 → 自訂人設」可新增／編輯／刪除，資料存在 `<DSH_HOME>/line-bot/personas.json`（0600）。選到自訂人設時，插件會請大肥魚在該 session 停用（若它有安裝），再把自訂人設注入這個 agent 的 system prompt。
+- 兩種人設可以在同一個下拉選單裡選；使用者自己用 LINE 指令切換時也一樣（`人設`、`人設 2`、`人設 名字`）。
 
 ## 每位使用者各自的記憶與人設
 
@@ -104,7 +110,7 @@ dsh plugin --profile desktop add dsh-line-bot
 
 「刷貼吧」外掛每天最多演化一次自己的語氣（存在 `<DSH_HOME>/tieba-duty/persona.json`），這和 LINE 用的大肥魚人設（`<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json`）原本是兩套、互不相通。這個外掛可以把它接起來：
 
-- 面板「回覆人設 → 貼吧學習同步」可設定開關、同步目標人設（只能選你在「回覆人設」建立／匯入的自訂人設；預設關閉，請先選一個）、檢查間隔（預設 60 分鐘）、是否同步性格數值、寫入後是否重載大肥魚外掛。
+- 面板「回覆人設 → 貼吧學習同步」可設定開關、同步目標人設（只能選大肥魚的人設；預設關閉，請先選一個）、檢查間隔（預設 60 分鐘）、是否同步性格數值、寫入後是否重載大肥魚外掛。這項功能需要安裝大肥魚外掛。
 - 每次檢查會比對貼吧人設版本；有新版本才動作。寫入時只替換目標人設正文中的 `## 貼吧學來的口氣` 段落（沒有就附加），不會覆蓋其他手寫內容；性格數值（溫柔／毒舌／抽象／話癆／發圖傾向）可一併更新。
 - 寫入前會備份到 `<DSH_HOME>/line-bot/persona-backups/personas-<時間>.json`。
 - 寫入後預設會透過 Cordis loader 重啟 `dsh-persona-dafeiyu`，讓它重新讀取 store；重啟失敗只會記警告，人設文字仍已寫入，下次外掛重載時生效。
@@ -118,7 +124,7 @@ dsh plugin --profile desktop add dsh-line-bot
 - **貼吧同步沒動作**：先看面板同步狀態的 `lastError`；確認貼吧外掛的人設檔存在、目標人設 id 正確。按「預覽差異」可比對目前段落與即將寫入的內容。
 - **cloudflared 找不到**：按「下載 cloudflared」，插件會抓官方 release 放到 `<DSH_HOME>/line-bot/bin/`；也可以自己放一份並在 `tunnel.binaryPath` 指定。
 - **Agent 回覆 403（模型只開放給 Codex）**：在「進階設定 → Agent 模型」把 provider／model 改成 `deepseek-account` / `deepseek-flash`（本機預設已設好），儲存後再測一次。
-- **人設沒套用**：大肥魚必須是 `session` 模式；面板會提示，按「切換到大肥魚 session 模式」即可（這是插件官方支援的設定，只影響「可不可以逐 session 指定人設」）。
+- **人設沒套用**：選大肥魚時，它必須是 `session` 模式；面板會提示，按「切換到大肥魚 session 模式」即可（這是它官方支援的設定，只影響「可不可以逐 session 指定人設」）。選插件自訂人設則不受此限制。
 - **Cloudflare 回 530 / error code 1016**：具名隧道的 DNS CNAME 目標必須是 `<tunnel-id>.cfargotunnel.com`（不是 `.cfd.tunnel`）；另外該子網域若同時被 A 記錄佔用，邊緣會先回那台主機，請確認 DNS 只留一筆 CNAME。
 
 ## 隱私

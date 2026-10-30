@@ -7,7 +7,8 @@
 - LINE Messaging API webhook server（`X-Line-Signature` 驗章、事件去重、每位使用者佇列、reply 失敗自動改 push、loading 動畫）。
 - Cloudflare Tunnel：quick tunnel（`*.trycloudflare.com`）與 API Token 具名隧道（自動建立 tunnel、ingress、DNS CNAME、`cfargotunnel.com` 目標），取得網址後自動設定並測試 LINE webhook。
 - LINE 憑證：Channel ID + Channel Secret 自動簽發／續簽 access token；也可貼上既有 token。
-- 回覆走 DSH 行程內的 Agent（`agents.create`／`resume`），預設套用大肥魚人設，可逐 session 指定。
+- 回覆走 DSH 行程內的 Agent（`agents.create`／`resume`），可逐 session 指定人設。
+- 人設來源：大肥魚（`dsh-persona-dafeiyu`，選用）或插件內建的自訂人設（`<DSH_HOME>/line-bot/personas.json`）；面板可新增／編輯／刪除／把大肥魚人設複製成自訂。選自訂人設時會請大肥魚在該 session 停用，再由插件注入 system prompt，不需要任何個性外掛。
 - 每位 LINE 使用者獨立 session 與工作資料夾（記憶不互通），可用「人設」指令自行切換人設。
 - 主動傳訊排程：機率、間隔、每日／每月上限、最短間隔、安靜時段、idle、指定對象、提示詞，Agent 可回 `SKIP`。
 - 完整設定面板（`settings.section`）：狀態總覽、LINE 憑證、Cloudflare Tunnel、人設、貼吧學習同步、主動傳訊、使用者、進階設定；固定儲存列與二級快速選單。
