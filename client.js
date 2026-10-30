@@ -871,6 +871,8 @@ window.__ModuleLoader__.load({
             h(Field, { label: '每位使用者獨立工作資料夾', hint: '開啟＝每個 LINE 使用者有自己的 cwd（檔案、AGENTS.md、工作區記憶互不相通）' },
               h(Toggle, { checked: agentCfg.perUserWorkspace !== false, onChange: (value) => update({ agent: { perUserWorkspace: value } }), label: '一人一個資料夾', hint: '預設開；關閉則全部共用 agent.cwd' })),
             h(Field, { label: '使用者工作資料夾根目錄（選填）', hint: '留空＝<資料夾>/users/<LINE userId>' }, h(Text, { value: agentCfg.workspaceRoot, onChange: (value) => update({ agent: { workspaceRoot: value } }), placeholder: '留空＝自動', mono: true })),
+            h(Field, { label: '讓 Agent 知道貼吧動態', hint: '每輪注入「剛剛有沒有刷貼吧、今天刷過幾場、有沒有日報」；貼吧外掛的紀錄不在時自動略過。' },
+              h(Toggle, { checked: agentCfg.tiebaContext !== false, onChange: (value) => update({ agent: { tiebaContext: value } }), label: '注入貼吧動態', hint: '預設開' })),
             h(Field, { label: 'Agent 逾時（毫秒）' }, h(Num, { value: agentCfg.timeoutMs, min: 10000, max: 900000, step: 1000, onChange: (value) => update({ agent: { timeoutMs: value } }) })),
             h(Field, { label: 'Agent provider（留空＝跟隨 DSH 預設）' }, h(Text, { value: agentCfg.provider, onChange: (value) => update({ agent: { provider: value } }), placeholder: 'deepseek-account' })),
             h(Field, { label: 'Agent model（留空＝跟隨 DSH 預設）' }, h(Text, { value: agentCfg.model, onChange: (value) => update({ agent: { model: value } }), placeholder: 'deepseek-flash' })),

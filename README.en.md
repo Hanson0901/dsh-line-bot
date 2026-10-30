@@ -120,6 +120,17 @@ The "dive into Tieba" plugin evolves its own tone at most once a day (stored in 
 - After writing it restarts `dsh-persona-dafeiyu` through the Cordis loader so it re-reads the store; a failed restart is only a warning — the text is already written and takes effect on the next plugin reload.
 - If the Tieba plugin is not running or the Tieba persona does not exist, the check is skipped (`pending` shows why it has not synced yet).
 
+## Tieba activity awareness
+
+With **Advanced → Let the agent know about Tieba activity** enabled (default), each reply is preceded by a small block of background facts injected into the system prompt, built from the Tieba plugin's records:
+
+- when the character last browsed Tieba (e.g. "yesterday 22:41, 5 hours ago")
+- which sessions already ran today (noon / night)
+- whether today's Tieba report exists
+- the Tieba persona version and the last reply time
+
+So when someone asks "did you just browse Tieba?" or "have you been on today?", the character answers from the real timestamps instead of making things up. It only reads files under `<DSH_HOME>/tieba-duty/`; the Tieba plugin does not need to be running, and nothing is written. If no records exist, nothing is injected.
+
 ## Troubleshooting
 
 - **The panel says "cannot connect to the LINE Bot runtime"**: webServer may not be ready yet; refresh. If it still fails, look for `[line-bot]` messages in the DSH logs.
