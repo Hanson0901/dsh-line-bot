@@ -13,6 +13,7 @@ window.__ModuleLoader__.load({
     // 二級選單：卡片區塊的快速跳轉。
     const NAV = [
       { key: 'overview', label: '狀態總覽' },
+      { key: 'balance', label: 'DeepSeek 餘額' },
       { key: 'line', label: 'LINE 憑證' },
       { key: 'tunnel', label: 'Cloudflare' },
       { key: 'persona', label: '回覆人設' },
@@ -291,6 +292,8 @@ window.__ModuleLoader__.load({
       'persona-status': '重新讀取人設',
       'persona-mode': '切換人設模式',
       'tieba-preview': '預覽貼吧同步差異',
+      'balance-refresh': '查詢 DeepSeek 餘額',
+      'balance-ask': '餘額提醒',
       'tieba-sync': '同步貼吧學習',
       'local-persona-list': '讀取自訂人設',
       'local-persona-get': '讀取自訂人設內容',
@@ -313,6 +316,7 @@ window.__ModuleLoader__.load({
       const [toast, setToast] = useState(null)
       const [active, setActive] = useState('overview')
       const [syncPreview, setSyncPreview] = useState(null)
+      const [balancePreview, setBalancePreview] = useState(null)
       const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
       const dirty = useMemo(() => {
@@ -405,6 +409,31 @@ window.__ModuleLoader__.load({
         } finally {
           setBusy('')
         }
+      }
+
+      async function previewBalance() {
+        setBusy('balance-ask')
+        setToast(null)
+        try {
+          if (dirty) await persist(false)
+          const value = await jpost('/action', { action: 'balance-ask', payload: { dryRun: true, force: true } })
+          if (value?.status) {
+            setStatus(value.status)
+            setDraft(stripSecrets(value.status.config))
+          }
+          setBalancePreview(value?.result || null)
+          setToast({ kind: 'ok', text: value?.result?.text ? '已產生提醒文字，還沒有送出。' : '目前不需要提醒。' })
+        } catch (err) {
+          setToast({ kind: 'error', text: '預覽提醒失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function askBalance() {
+        if (typeof window !== 'undefined' && !window.confirm('現在真的用 LINE 送一則餘額提醒給使用者？')) return
+        setBalancePreview(null)
+        await act('balance-ask', { dryRun: false, force: true })
       }
 
       async function previewSync() {
@@ -533,6 +562,10 @@ window.__ModuleLoader__.load({
       const agentCfg = cfg.agent || {}
       const nudgeCfg = cfg.nudge || {}
       const syncCfg = cfg.sync || {}
+      const balanceCfg = cfg.balance || {}
+      const balanceStatus = status.balance || {}
+      const balanceSymbol = balanceStatus.cny ? '¥' : balanceStatus.usd ? '$' : '¥'
+      const balanceTotal = balanceStatus.cny ? balanceStatus.cny.total : balanceStatus.usd ? balanceStatus.usd.total : null
       const syncStats = status.sync || {}
       const runtime = status
       const persona = status.persona || {}
@@ -613,6 +646,63 @@ window.__ModuleLoader__.load({
           tunnelStatus.error ? h('div', { style: S.errBox }, `隧道：${tunnelStatus.error}`) : null,
           persona.warning ? h('div', { style: S.warnBox }, persona.warning) : null,
           runtime.agent?.lastError ? h('div', { style: S.errBox }, `Agent：${runtime.agent.lastError}`) : null,
+        ),
+
+        // 1.5 DeepSeek 餘額
+        h(
+          Card,
+          {
+            id: sectionDomId('balance'),
+            title: 'DeepSeek 餘額',
+            desc: '讓角色知道 API 錢包剩多少；低於門檻時由角色自己想一句話提醒你儲值（會避開主動傳訊的靜音時段）。',
+            right: h(Btn, { onClick: () => act('balance-refresh'), disabled: !!busy }, busy === 'balance-refresh' ? '查詢中…' : '重新查詢'),
+          },
+          h(
+            'div',
+            { style: S.row },
+            h(Badge, { ok: balanceStatus.status === 'ready' ? !balanceStatus.low : false }, balanceTotal != null ? ('可用 ' + balanceSymbol + Number(balanceTotal).toFixed(2)) : ('餘額：' + (balanceStatus.status || '未查詢'))),
+            h(Badge, { ok: balanceCfg.enabled !== false }, '監控' + (balanceCfg.enabled !== false ? '開啟' : '關閉')),
+            h(Badge, { ok: balanceCfg.ask !== false }, '主動提醒' + (balanceCfg.ask !== false ? '開啟' : '關閉')),
+          ),
+          balanceStatus.status === 'ready'
+            ? h(KV, {
+                rows: [
+                  ['目前餘額', (balanceStatus.cny ? '¥' + Number(balanceStatus.cny.total).toFixed(2) + '（一般 ¥' + Number(balanceStatus.cny.normal).toFixed(2) + '、贈金 ¥' + Number(balanceStatus.cny.bonus).toFixed(2) + '）' : '$' + Number(balanceStatus.usd.total).toFixed(2))],
+                  ['上次查詢', fmtTime(balanceStatus.at)],
+                  ['上次提醒', balanceStatus.lastAskAt ? fmtTime(balanceStatus.lastAskAt) : '還沒提醒過'],
+                  ['提醒門檻', '¥' + (balanceCfg.threshold || 0) + '（0 = 不自動提醒）'],
+                ],
+              })
+            : h(
+                'div',
+                { style: S.note },
+                balanceStatus.status === 'unavailable'
+                  ? '這個 DSH profile 沒有 deepseek-account 服務，抓不到餘額；其他功能不受影響。'
+                  : balanceStatus.status === 'signed-out'
+                    ? '目前沒有登入 DeepSeek 帳號（或登入已過期），所以查不到餘額。'
+                    : balanceStatus.error
+                      ? ('查詢失敗：' + balanceStatus.error)
+                      : '按「重新查詢」讀取目前的 DeepSeek API 餘額。',
+              ),
+          h(
+            'div',
+            { style: S.grid },
+            h(Field, { label: '低於多少提醒（¥）', hint: '0 = 不自動提醒；低於門檻時由角色主動傳訊息' }, h(Num, { value: balanceCfg.threshold, min: 0, max: 100000, step: 1, onChange: (value) => update({ balance: { threshold: value } }) })),
+            h(Field, { label: '提醒冷卻（小時）', hint: '同一段時間內最多提醒一次' }, h(Num, { value: balanceCfg.cooldownHours, min: 1, max: 168, step: 1, onChange: (value) => update({ balance: { cooldownHours: value } }) })),
+          ),
+          h(
+            'div',
+            { style: S.row },
+            h(Toggle, { checked: balanceCfg.enabled !== false, onChange: (value) => update({ balance: { enabled: value } }), label: '在每輪回覆裡提供餘額給角色', hint: '關掉就完全不知道餘額' }),
+            h(Toggle, { checked: balanceCfg.ask !== false, onChange: (value) => update({ balance: { ask: value } }), label: '低於門檻時主動提醒', hint: '由角色自己決定怎麼問' }),
+          ),
+          h(
+            'div',
+            { style: S.row },
+            h(Btn, { onClick: previewBalance, disabled: !!busy }, busy === 'balance-ask' ? '產生中…' : '預覽提醒（不送出）'),
+            h(Btn, { tone: 'primary', onClick: askBalance, disabled: !!busy }, '立即提醒一次'),
+          ),
+          balancePreview && balancePreview.text ? h('div', { style: S.panelBox }, h('div', { style: S.fieldTitle }, '角色會傳這則：'), h('pre', { style: S.pre }, balancePreview.text)) : null,
         ),
 
         // 2. LINE 憑證

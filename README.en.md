@@ -131,6 +131,16 @@ With **Advanced → Let the agent know about Tieba activity** enabled (default),
 
 So when someone asks "did you just browse Tieba?" or "have you been on today?", the character answers from the real timestamps instead of making things up. It only reads files under `<DSH_HOME>/tieba-duty/`; the Tieba plugin does not need to be running, and nothing is written. If no records exist, nothing is injected.
 
+## DeepSeek balance
+
+The **DeepSeek balance** card reads the wallet balance of the DeepSeek account DSH is signed in with (read-only; it never tops up):
+
+- Every reply includes the current balance in the persona's background context, so you can just ask "how much do I have left?".
+- When it drops below the threshold (default ¥10, adjustable in the panel), the persona sends you a message **in its own words** asking you to top up. The wording is generated on the spot, not a fixed template.
+- Reminders have a cooldown (default 12 hours) and reuse the proactive-messaging quiet hours and target-user settings.
+- Requires DSH to be signed in to a DeepSeek account (deepseek-account). If it is not, the card explains why and everything else keeps working.
+- The threshold is money, not tokens: Platform shows a wallet balance, and token conversion varies by model and cache hits.
+
 ## Troubleshooting
 
 - **The panel says "cannot connect to the LINE Bot runtime"**: webServer may not be ready yet; refresh. If it still fails, look for `[line-bot]` messages in the DSH logs.
