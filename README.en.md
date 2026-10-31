@@ -142,6 +142,7 @@ When the bot is added to a group (or a multi-user room):
 - **Being @-mentioned always triggers a reply**, and **quoting any message always triggers a reply**; any other message is answered only when a dice roll against the *group reply chance* (default 15%) succeeds, otherwise it stays quiet.
 - Each group gets its own **DSH session, workspace folder, persona and personal memory**, separate from direct chats and other groups.
 - The `persona` command works in groups too; the panel's **Groups** card lets you tune the reply chance, toggles, per-group persona and clear a group's memory.
+- Each member has **their own memory points** inside a group; replies also look at the last 4–6 messages from others so the bot can pick up the thread.
 - Proactive messages and DeepSeek balance reminders still target direct chats only.
 
 ## Per-user memory and personas
