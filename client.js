@@ -252,6 +252,28 @@ window.__ModuleLoader__.load({
       )
     }
 
+
+    function UserChips({ users, value, onChange, emptyText }) {
+      const ids = Array.isArray(value) ? value : []
+      const list = Array.isArray(users) ? users : []
+      if (list.length === 0) {
+        return h('div', { style: S.note }, emptyText || '目前還沒有使用者跟 bot 聊過；有人傳訊息後就會出現在這裡。')
+      }
+      return h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6 } },
+        list.map((user) => {
+          const selected = ids.includes(user.userId)
+          const label = (user.displayName || '未命名') + '（' + String(user.userId).slice(-6) + '）'
+          return h('button', {
+            key: user.userId,
+            type: 'button',
+            onClick: () => onChange(selected ? ids.filter((id) => id !== user.userId) : [...ids, user.userId]),
+            title: user.userId,
+            style: { ...S.btn, padding: '4px 10px', borderRadius: 999, fontSize: 12, background: selected ? 'var(--dsw-alias-state-business-primary, #4b7bec)' : 'transparent', color: selected ? '#fff' : 'var(--dsw-alias-label-primary)', border: '1px solid ' + (selected ? 'transparent' : 'var(--dsw-alias-border-l2)') },
+          }, label)
+        }),
+      )
+    }
+
     function Badge({ ok, children }) {
       const color = ok === true ? S.ok.color : ok === false ? S.bad.color : S.warn.color
       const dot = ok === true ? S.ok.color : ok === false ? S.bad.color : S.warn.color
@@ -769,6 +791,7 @@ window.__ModuleLoader__.load({
                       ? ('查詢失敗：' + balanceStatus.error)
                       : '按「重新查詢」讀取目前的 DeepSeek API 餘額。',
               ),
+          h(Field, { label: '餘額提醒對象', hint: '留空＝沿用主動傳訊的指定對象；只會提醒這裡選的人' }, h(UserChips, { users: status.users, value: balanceCfg.targetUserIds, onChange: (ids) => update({ balance: { targetUserIds: ids } }) })),
           h(
             'div',
             { style: S.grid },
@@ -1091,7 +1114,7 @@ window.__ModuleLoader__.load({
             h(Field, { label: '安靜開始（HH:MM）' }, h(Text, { value: nudgeCfg.quietStart, onChange: (value) => update({ nudge: { quietStart: value } }), placeholder: '00:30' })),
             h(Field, { label: '安靜結束（HH:MM）' }, h(Text, { value: nudgeCfg.quietEnd, onChange: (value) => update({ nudge: { quietEnd: value } }), placeholder: '09:30' })),
           ),
-          h(Field, { label: '指定對象（LINE userId，一行一個）', hint: '留空＝所有已聊過的使用者中挑最久沒互動的' }, h(Area, { value: textList(nudgeCfg.targetUserIds), onChange: (value) => update({ nudge: { targetUserIds: parseList(value) } }), rows: 2, mono: true })),
+          h(Field, { label: '指定對象', hint: '留空＝所有已聊過的使用者中挑最久沒互動的；直接點選要傳給誰' }, h(UserChips, { users: status.users, value: nudgeCfg.targetUserIds, onChange: (ids) => update({ nudge: { targetUserIds: ids } }) })),
           h(Field, { label: '主動傳訊提示詞（給 Agent 的指示）', hint: '留空＝用內建預設（自然、簡短、不提系統、不重複、不適合就 SKIP）' }, h(Area, { value: nudgeCfg.prompt, onChange: (value) => update({ nudge: { prompt: value } }), rows: 4 })),
           h('div', { style: S.row },
             h(Btn, { onClick: () => act('nudge-test', { force: true }), disabled: !!busy, tone: 'primary' }, busy === 'nudge-test' ? '試跑中…' : '立即試傳一則'),
