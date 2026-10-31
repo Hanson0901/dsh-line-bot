@@ -298,6 +298,8 @@ window.__ModuleLoader__.load({
     }
 
     // ── 主面板 ─────────────────────────────────────────────────────────────
+    const memoCfgApng = (cfgValue) => cfgValue?.apng === true
+
     const ACTION_LABELS = {
       'meme-stats': '讀取表情包圖庫',
       start: '啟動',
@@ -1151,6 +1153,7 @@ window.__ModuleLoader__.load({
                 ),
                 h(Toggle, { checked: memeCfg.enabled !== false, onChange: (value) => update({ stickers: { enabled: value } }), label: '允許角色使用表情包', hint: '關掉後只回文字' }),
                 h(Field, { label: '一次最多幾張', hint: 'LINE 一次回覆最多 5 則訊息，圖片也算在內' }, h(Num, { value: memeCfg.maxPerReply, min: 1, max: 3, step: 1, onChange: (value) => update({ stickers: { maxPerReply: value } }) })),
+                h(Toggle, { checked: memoCfgApng(memeCfg), onChange: (value) => update({ stickers: { apng: value } }), label: 'GIF 保留 APNG 動畫', hint: 'LINE 目前不會播放 APNG，只會顯示第一幀；開啟會讓檔案變大' }),
                 h('div', { style: S.row },
                   h(Btn, { onClick: () => act('meme-stats'), disabled: !!busy }, busy === 'meme-stats' ? '讀取中…' : '重新讀取圖庫'),
                 ),

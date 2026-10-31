@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.4
+
+- LINE 不會播放 APNG 動畫（只顯示第一幀），所以 GIF 預設改成靜態 PNG，檔案更小、載入更穩。
+- 面板「表情包」卡新增「GIF 保留 APNG 動畫」開關（預設關閉）；打開才會送 APNG。
+
 ## 0.5.3
 
 - 表情包改用 Flex Message（hero 圖片＋文字），GIF 轉成 APNG 保留動畫；APNG 過大或轉檔失敗才退回靜態 PNG。
