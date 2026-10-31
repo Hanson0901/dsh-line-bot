@@ -77,6 +77,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Reply persona | Choose a persona (dafeiyu or a plugin custom one), add/edit/delete custom personas, copy the current persona into a custom one, enforce, allow users to switch personas, switch dafeiyu to session mode, test an Agent reply |
 | Tieba learning sync | Writes the tone samples learned while browsing Tieba back into the persona's "Tieba tone" section, preview diff, sync now |
 | Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
+| Memes | Reply with images/stickers from the dsh-meme library, enable/disable, image limit, and sample previews |
 | DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
 | Proactive messages | Toggle, probability, interval, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics |
 | Users | The DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
@@ -164,6 +165,14 @@ The character keeps its own memory at `<DSH_HOME>/line-bot/memories.json`, separ
 - Each turn only injects the most recent N entries (20 entries / 2000 characters by default); the rest stay in the file. The per-user cap defaults to 120 entries and evicts the oldest.
 - Passwords, tokens, ID numbers and similar secrets should not be stored; it avoids them.
 - The "Personal memory" panel card shows what it remembers, lets you delete entries, prune expired ones, or trigger a review right away.
+## Memes (dsh-meme)
+
+The persona can attach a sticker to a text reply, or reply with just an image. Images come from the installed dsh-meme plugin's library (the built-in "大肥鱼" pack has 24 images):
+
+- Each turn injects a numbered sample of the library into context; when the persona wants a picture, it appends `[[meme:#N]]` (or a caption) at the end of its reply, and the plugin turns that into a LINE image message.
+- Images are served to LINE through the current Cloudflare public URL (`<url>/media/<token>`), and the URL follows quick-tunnel restarts automatically.
+- The panel's "Memes" card can disable the feature, limit images per reply (1–3), and preview library samples. To add or re-tag images, use dsh-meme's own settings.
+- Without dsh-meme installed, the feature stays off and replies are text only.
 ## Troubleshooting
 
 - **The panel says "cannot connect to the LINE Bot runtime"**: webServer may not be ready yet; refresh. If it still fails, look for `[line-bot]` messages in the DSH logs.

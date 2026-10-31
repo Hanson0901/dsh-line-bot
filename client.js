@@ -21,6 +21,7 @@ window.__ModuleLoader__.load({
       { key: 'memory', label: '個人記憶' },
       { key: 'balance', label: 'DeepSeek 餘額' },
       { key: 'nudge', label: '主動傳訊' },
+      { key: 'meme', label: '表情包' },
       { key: 'users', label: '使用者' },
       { key: 'advanced', label: '進階／日誌' },
     ]
@@ -298,6 +299,7 @@ window.__ModuleLoader__.load({
 
     // ── 主面板 ─────────────────────────────────────────────────────────────
     const ACTION_LABELS = {
+      'meme-stats': '讀取表情包圖庫',
       start: '啟動',
       stop: '停止',
       restart: '重新啟動',
@@ -656,6 +658,9 @@ window.__ModuleLoader__.load({
       const nudgeCfg = cfg.nudge || {}
       const syncCfg = cfg.sync || {}
       const balanceCfg = cfg.balance || {}
+      const memeCfg = cfg.stickers || {}
+      const memeStatus = status.meme || {}
+      const memeSample = Array.isArray(memeStatus.sample) ? memeStatus.sample : []
       const balanceStatus = status.balance || {}
       const balanceSymbol = balanceStatus.cny ? '¥' : balanceStatus.usd ? '$' : '¥'
       const balanceTotal = balanceStatus.cny ? balanceStatus.cny.total : balanceStatus.usd ? balanceStatus.usd.total : null
@@ -1132,10 +1137,34 @@ window.__ModuleLoader__.load({
           nudgeStats.lastError ? h('div', { style: S.errBox }, nudgeStats.lastError) : null,
         ),
 
+        // 5.5 表情包（dsh-meme 圖庫）
+        h(
+          Card,
+          { id: sectionDomId('meme'), order: 10, title: '表情包（dsh-meme 圖庫）', desc: '角色可以在文字後面配一張圖，也可以只回一張圖。圖片來自 dsh-meme 外掛的圖庫；要新增、分類或改描述，請到 dsh-meme 的設定頁。' },
+          !memeStatus.available
+            ? h('div', { style: S.warnBox }, '沒有偵測到 dsh-meme 外掛（或尚未啟用）。請先安裝並啟用 dsh-meme，這裡才會出現可用圖片。')
+            : h('div', null,
+                h('div', { style: S.row },
+                  h(Badge, { ok: true }, '圖庫 ' + ((memeStatus.packs || []).length) + ' 個'),
+                  h(Badge, { ok: true }, '共 ' + (memeStatus.count || 0) + ' 張'),
+                  h(Badge, { ok: !!memeStatus.publicBase }, memeStatus.publicBase ? '公開網址正常' : '沒有公開網址'),
+                ),
+                h(Toggle, { checked: memeCfg.enabled !== false, onChange: (value) => update({ stickers: { enabled: value } }), label: '允許角色使用表情包', hint: '關掉後只回文字' }),
+                h(Field, { label: '一次最多幾張', hint: 'LINE 一次回覆最多 5 則訊息，圖片也算在內' }, h(Num, { value: memeCfg.maxPerReply, min: 1, max: 3, step: 1, onChange: (value) => update({ stickers: { maxPerReply: value } }) })),
+                h('div', { style: S.row },
+                  h(Btn, { onClick: () => act('meme-stats'), disabled: !!busy }, busy === 'meme-stats' ? '讀取中…' : '重新讀取圖庫'),
+                ),
+                h('div', { style: S.fieldTitle }, '圖庫樣本'),
+                memeSample.length === 0
+                  ? h('div', { style: S.hint }, '目前讀不到樣本；確認 dsh-meme 是否已啟用圖庫。')
+                  : h('div', null, memeSample.map((item, index) => h('div', { key: index, style: { fontSize: 13, padding: '4px 0', borderTop: '1px solid var(--dsw-alias-border-l2)' } }, '・' + item.caption + '（' + item.tag + '）'))),
+              ),
+        ),
+
         // 6. 使用者
         h(
           Card,
-          { id: sectionDomId('users'), order: 10, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
+          { id: sectionDomId('users'), order: 11, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
           (status.users || []).length === 0
             ? h('div', { style: S.hint }, '還沒有人傳訊息給 bot。')
             : h('table', { style: S.table },
@@ -1171,7 +1200,7 @@ window.__ModuleLoader__.load({
         // 7. 進階設定
         h(
           Card,
-          { id: sectionDomId('advanced'), order: 11, title: '進階設定', desc: '通常不用改；出問題時可從這裡調整。' },
+          { id: sectionDomId('advanced'), order: 20, title: '進階設定', desc: '通常不用改；出問題時可從這裡調整。' },
           h('div', { style: S.grid },
             h(Field, { label: 'Webhook 連接埠', hint: '改完按儲存；伺服器會自動重啟。' }, h(Num, { value: server.port, min: 1024, max: 65535, onChange: (value) => update({ server: { port: value } }) })),
             h(Field, { label: '每位使用者獨立工作資料夾', hint: '開啟＝每個 LINE 使用者有自己的 cwd（檔案、AGENTS.md、工作區記憶互不相通）' },
