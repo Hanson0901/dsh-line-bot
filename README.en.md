@@ -143,6 +143,7 @@ When the bot is added to a group (or a multi-user room):
 - Each group gets its own **DSH session, workspace folder, persona and personal memory**, separate from direct chats and other groups.
 - The `persona` command works in groups too; the panel's **Groups** card lets you tune the reply chance, toggles, per-group persona and clear a group's memory.
 - Each member has **their own memory points** inside a group; replies also look at the last 4–6 messages from others so the bot can pick up the thread.
+- If you join a group late, use **Import chat** on the Groups card and pick a LINE-exported `.txt`; it builds a group summary and per-member memory points (stored locally only).
 - Proactive messages and DeepSeek balance reminders still target direct chats only.
 
 ## Per-user memory and personas

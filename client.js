@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
   factory: (require) => {
     const React = require('react')
     const h = React.createElement
-    const { useEffect, useMemo, useState } = React
+    const { useEffect, useMemo, useRef, useState } = React
 
     const API = '/api/line-bot'
     const SECTION_ID = 'line-bot'
@@ -356,6 +356,8 @@ window.__ModuleLoader__.load({
       const [balancePreview, setBalancePreview] = useState(null)
       const [memoryData, setMemoryData] = useState(null)
       const [modelCatalog, setModelCatalog] = useState(null)
+      const [importGroup, setImportGroup] = useState('')
+      const importInput = useRef(null)
       const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
       const dirty = useMemo(() => {
@@ -512,6 +514,26 @@ window.__ModuleLoader__.load({
       async function runMemory(action) {
         await act(action)
         await loadMemory({ quiet: true })
+      }
+
+      async function importChatFile(event) {
+        const file = event.target.files && event.target.files[0]
+        event.target.value = ''
+        if (!file || !importGroup) return
+        setBusy('group-import')
+        try {
+          const text = await file.text()
+          const value = await jpost('/action', { action: 'group-import', payload: { groupId: importGroup, text } })
+          if (value?.status) { setStatus(value.status); setDraft(stripSecrets(value.status.config || {})); }
+          const result = value?.result || {}
+          setToast({ kind: 'ok', text: `已匯入 ${result.messageCount || 0} 則聊天，寫入 ${result.memories || 0} 筆成員記憶。` })
+          loadMemory({ quiet: true })
+        } catch (error) {
+          setToast({ kind: 'err', text: error?.message || String(error) })
+        } finally {
+          setBusy('')
+          setImportGroup('')
+        }
       }
 
       async function loadModelCatalog({ quiet = false, force = false } = {}) {
@@ -1210,7 +1232,8 @@ window.__ModuleLoader__.load({
         // 6.5 群組
         h(
           Card,
-          { id: sectionDomId('group'), order: 12, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶。' },
+          { id: sectionDomId('group'), order: 12, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶；比較晚加入時可以匯入 LINE 匯出的聊天記錄補記憶。' },
+          h('input', { ref: importInput, type: 'file', accept: '.txt,text/plain', style: { display: 'none' }, onChange: importChatFile }),
           h('div', { style: S.grid },
             h(Field, { label: '沒被點名時的回覆機率（%）', hint: '每則群組訊息用這個機率決定要不要回；0 就只在被 @ 或引用時回' },
               h(Num, { value: Math.round((Number(groupCfg.replyChance) || 0) * 100), min: 0, max: 100, step: 1, onChange: (value) => update({ group: { replyChance: value / 100 } }) })),
@@ -1226,7 +1249,10 @@ window.__ModuleLoader__.load({
                 h('thead', null, h('tr', null, h('th', { style: S.th }, '群組'), h('th', { style: S.th }, 'session／資料夾'), h('th', { style: S.th }, '訊息'), h('th', { style: S.th }, '人設'), h('th', { style: S.th }, '上次互動'), h('th', { style: S.th }, ''))),
                 h('tbody', null, groupList.map((group) =>
                   h('tr', { key: group.groupId },
-                    h('td', { style: S.td }, h('div', null, group.displayName || '（未命名群組）'), h('div', { style: { ...S.hint, ...S.mono } }, group.groupId)),
+                    h('td', { style: S.td },
+                      h('div', null, group.displayName || '（未命名群組）'),
+                      h('div', { style: { ...S.hint, ...S.mono } }, group.groupId),
+                      group.importedMessages ? h('div', { style: S.hint }, `已匯入 ${group.importedMessages} 則（${fmtTime(group.importedAt)}）`) : null),
                     h('td', { style: { ...S.td, ...S.mono } }, group.sessionId || '—', group.workspaceDir ? h('div', { style: { ...S.hint, ...S.mono, wordBreak: 'break-all' } }, group.workspaceDir) : null),
                     h('td', { style: S.td }, String(group.messages ?? 0)),
                     h('td', { style: S.td },
@@ -1239,14 +1265,20 @@ window.__ModuleLoader__.load({
                         (personaCatalog.length ? personaCatalog : [{ id: group.personaId, name: group.personaName || group.personaId }]).map((item) =>
                           h('option', { key: item.id, value: item.id }, `${item.name}${item.source === 'local' ? '（自訂）' : ''}`)))),
                     h('td', { style: S.td }, fmtTime(group.lastAt)),
-                    h('td', { style: S.td }, h(Btn, {
-                      onClick: () => {
-                        if (typeof window !== 'undefined' && !window.confirm('這會清空這個群組自己的 session 與工作資料夾（記憶、檔案），確定？')) return
-                        act('group-reset', { groupId: group.groupId, wipeWorkspace: true })
-                      },
-                      disabled: !!busy,
-                      tone: 'danger',
-                    }, '清空記憶'))),
+                    h('td', { style: S.td },
+                      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+                        h(Btn, {
+                          onClick: () => { setImportGroup(group.groupId); if (importInput.current) importInput.current.click() },
+                          disabled: !!busy,
+                        }, busy === 'group-import' && importGroup === group.groupId ? '匯入中…' : '匯入聊天'),
+                        h(Btn, {
+                          onClick: () => {
+                            if (typeof window !== 'undefined' && !window.confirm('這會清空這個群組自己的 session 與工作資料夾（記憶、檔案），確定？')) return
+                            act('group-reset', { groupId: group.groupId, wipeWorkspace: true })
+                          },
+                          disabled: !!busy,
+                          tone: 'danger',
+                        }, '清空記憶')))),
                   ))),
         ),
 
