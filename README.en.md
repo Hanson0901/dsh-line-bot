@@ -160,11 +160,23 @@ When the bot is added to a group (or a multi-user room):
 
 The "dive into Tieba" plugin evolves its own tone at most once a day (stored in `<DSH_HOME>/tieba-duty/persona.json`), and that is a separate system from the dafeiyu persona LINE uses (`<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json`). This plugin can bridge them:
 
-- In the panel, "Reply persona → Tieba learning sync" lets you set the toggle, the target persona (dafeiyu personas only; off by default, pick one first), the check interval (default 60 minutes), whether to sync personality numbers, and whether to reload the dafeiyu plugin after writing. This feature requires the dafeiyu plugin.
+- In the panel, "Reply persona → Tieba learning sync" lets you set the toggle, the target persona (any dafeiyu persona, including built-ins; off by default). Built-in personas cannot be edited in place, so their learning goes to `<DSH_HOME>/line-bot/persona-overlays/<id>.md` and is injected every turn without reloading; custom personas are edited directly., the check interval (default 60 minutes), whether to sync personality numbers, and whether to reload the dafeiyu plugin after writing. This feature requires the dafeiyu plugin.
 - Each check compares the Tieba persona version; it only acts on a new version. It replaces only the `## 貼吧學來的口氣` section of the target persona text (appending it if missing) and never overwrites other hand-written content; the personality numbers (gentle / sharp / abstract / talkative / image bias) can be updated too.
 - Before writing it backs up to `<DSH_HOME>/line-bot/persona-backups/personas-<time>.json`.
 - After writing it restarts `dsh-persona-dafeiyu` through the Cordis loader so it re-reads the store; a failed restart is only a warning — the text is already written and takes effect on the next plugin reload.
 - If the Tieba plugin is not running or the Tieba persona does not exist, the check is skipped (`pending` shows why it has not synced yet).
+
+## Jokes and memes (text)
+
+The **Jokes** panel lets the persona use a little wordplay. Three sources can be toggled independently:
+
+- **Built-in seeds**: 10 common internet jokes with usage notes.
+- **Tieba quotes**: import highly-liked short replies from the Tieba style library.
+- **wanjiqi memes**: 6657 live-room barrage memes (optional; heavier style, off by default).
+
+Each turn injects a few entries; at most one per reply. The prompt tells the model not to explain the joke, not to force it, and not to use jokes in serious situations. Add your own by filling in the text and usage fields, then **Add to joke library**; the file lives at `<DSH_HOME>/line-bot/jokes.json`.
+
+**Add meme bars to Tieba** appends 弱智吧, 抽象吧, 搞笑吧 and 梗吧 to the Tieba plugin's bar list (with a backup). You still need to start a Tieba round for it to learn.
 
 ## Tieba activity awareness
 

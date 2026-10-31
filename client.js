@@ -18,6 +18,7 @@ window.__ModuleLoader__.load({
       { key: 'model', label: '模型與來源' },
       { key: 'persona', label: '回覆人設' },
       { key: 'sync', label: '貼吧同步' },
+      { key: 'jokes', label: '玩梗' },
       { key: 'memory', label: '個人記憶' },
       { key: 'balance', label: 'DeepSeek 餘額' },
       { key: 'nudge', label: '主動傳訊' },
@@ -353,6 +354,7 @@ window.__ModuleLoader__.load({
       const [toast, setToast] = useState(null)
       const [active, setActive] = useState('overview')
       const [syncPreview, setSyncPreview] = useState(null)
+      const [jokeDraft, setJokeDraft] = useState({ text: '', usage: '' })
       const [balancePreview, setBalancePreview] = useState(null)
       const [memoryData, setMemoryData] = useState(null)
       const [modelCatalog, setModelCatalog] = useState(null)
@@ -659,6 +661,33 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function addJoke() {
+        const text = String(jokeDraft.text || '').trim()
+        if (!text) {
+          setToast({ kind: 'error', text: '請先填一個梗' })
+          return
+        }
+        await act('joke-add', { text, usage: jokeDraft.usage })
+        setJokeDraft({ text: '', usage: '' })
+      }
+
+      async function deleteJoke(entry) {
+        if (typeof window !== 'undefined' && !window.confirm(`刪除梗「${entry.text}」？`)) return
+        await act('joke-delete', { id: entry.id })
+      }
+
+      async function importTiebaJokes() {
+        await act('joke-import-tieba', { limit: 40 })
+      }
+
+      async function importWanjiqiJokes() {
+        await act('joke-import-wanjiqi', {})
+      }
+
+      async function addTiebaBars() {
+        await act('tieba-bars-add', {})
+      }
+
       async function refresh() {
         setToast(null)
         try {
@@ -706,6 +735,9 @@ window.__ModuleLoader__.load({
       const groupCfg = cfg.group || {}
       const groupList = status.groups || []
       const memeCfg = cfg.stickers || {}
+      const jokesCfg = cfg.jokes || {}
+      const jokesStatus = status.jokes || {}
+      const jokeEntries = jokesStatus.entries || []
       const memeStatus = status.meme || {}
       const memeSample = Array.isArray(memeStatus.sample) ? memeStatus.sample : []
       const balanceStatus = status.balance || {}
@@ -727,7 +759,7 @@ window.__ModuleLoader__.load({
       const selectedPersona = personaCatalog.find((item) => item.id === personaCfg.id) || null
       const selectedName = selectedPersona?.name || personaCfg.id || '大肥魚'
       const selectedIsLocal = String(personaCfg.id || '').startsWith('local:')
-      const syncPersonaOptions = personaOptions.filter((item) => !item.builtin)
+      const syncPersonaOptions = personaOptions.slice()
       const syncTarget = syncCfg.targetPersonaId || (syncPersonaOptions[0] && syncPersonaOptions[0].id) || ''
       const bot = status.line?.bot || null
       const webhook = status.line?.webhook || null
@@ -802,7 +834,7 @@ window.__ModuleLoader__.load({
         h(
           Card,
           {
-            id: sectionDomId('balance'), order: 8,
+            id: sectionDomId('balance'), order: 9,
             title: 'DeepSeek 餘額',
             desc: '讓角色知道 API 錢包剩多少；低於門檻時由角色自己想一句話提醒你儲值（會避開主動傳訊的靜音時段）。只有模型來源是 deepseek-account 時才適用。',
             right: h(Btn, { onClick: () => act('balance-refresh'), disabled: !!busy || balanceStatus.applicable === false }, busy === 'balance-refresh' ? '查詢中…' : '重新查詢'),
@@ -870,7 +902,7 @@ window.__ModuleLoader__.load({
         h(
           Card,
           {
-            id: sectionDomId('memory'), order: 7,
+            id: sectionDomId('memory'), order: 8,
             title: '個人記憶',
             desc: '每位使用者分開。角色覺得重要的事會自己記下來；有期限的到期自動刪，每天也會請角色自己整理一次。',
             right: h(Btn, { onClick: () => loadMemory(), disabled: !!busy }, busy === 'memory-list' ? '讀取中…' : '重新整理'),
@@ -1125,10 +1157,10 @@ window.__ModuleLoader__.load({
         // 4b. 貼吧學習同步
         h(
           Card,
-          { id: sectionDomId('sync'), order: 6, title: '貼吧學習同步', desc: '把「刷貼吧」每天演化學到的語氣樣本，寫回上方人設的「## 貼吧學來的口氣」段落，並重載大肥魚插件讓它立即生效。' },
+          { id: sectionDomId('sync'), order: 6, title: '貼吧學習同步', desc: '把「刷貼吧」每天演化學到的語氣樣本，寫進上方人設。自訂人設會直接改人設本文；內建人設（大肥魚、阿茶、听澜）不能改原文，會寫進插件自己的覆蓋層，每輪注入、不用重載。' },
           h(Toggle, { checked: syncCfg.enabled !== false, onChange: (value) => update({ sync: { enabled: value } }), label: '開啟自動同步', hint: '每小時檢查一次；貼吧人設版本有變才寫入（寫入前會備份 personas.json）' }),
           h('div', { style: S.grid },
-            h(Field, { label: '同步到哪個人設' },
+            h(Field, { label: '同步到哪個人設', hint: '內建人設使用覆蓋層；自訂人設直接改本文' },
               h('select', { value: syncTarget, onChange: (event) => update({ sync: { targetPersonaId: event.target.value } }), style: S.input },
                 syncPersonaOptions.length
                   ? syncPersonaOptions.map((item) => h('option', { key: item.id, value: item.id }, item.name))
@@ -1152,10 +1184,48 @@ window.__ModuleLoader__.load({
             : null,
         ),
 
+        // 4c. 玩梗
+        h(
+          Card,
+          { id: sectionDomId('jokes'), order: 7, title: '玩梗', desc: '文字梗：內建種子、刷貼吧高讚回覆、或 wanjiqi-meme 彈幕梗。角色每輪只會看到幾條，一次最多用一個；三個來源可以個別開關。' },
+          h('div', { style: S.row },
+            h(Badge, { ok: jokesStatus.enabled !== false }, '共 ' + (jokesStatus.total || 0) + ' 則'),
+            h(Badge, { ok: jokesCfg.tieba !== false }, '貼吧金句'),
+            h(Badge, { ok: jokesCfg.wanjiqi === true }, 'wanjiqi 梗'),
+          ),
+          h('div', { style: S.row },
+            h(Toggle, { checked: jokesCfg.enabled !== false, onChange: (value) => update({ jokes: { enabled: value } }), label: '開啟玩梗', hint: '關掉後角色看不到任何梗' }),
+            h(Toggle, { checked: jokesCfg.tieba !== false, onChange: (value) => update({ jokes: { tieba: value } }), label: '使用貼吧金句', hint: '從刷貼吧的風格庫匯入的高讚短句' }),
+            h(Toggle, { checked: jokesCfg.wanjiqi === true, onChange: (value) => update({ jokes: { wanjiqi: value } }), label: '使用 wanjiqi 梗庫', hint: '6657 直播間彈幕梗，風格較重，預設關閉' }),
+          ),
+          h('div', { style: S.grid },
+            h(Field, { label: '每輪帶入幾則', hint: '只是給角色參考，不是每則都會用' }, h(Num, { value: jokesCfg.perTurn, min: 1, max: 8, onChange: (value) => update({ jokes: { perTurn: value } }) })),
+            h(Field, { label: '每次回覆最多用幾個', hint: '太多會很油' }, h(Num, { value: jokesCfg.maxUsePerReply, min: 1, max: 3, onChange: (value) => update({ jokes: { maxUsePerReply: value } }) })),
+          ),
+          h('div', { style: S.row },
+            h(Btn, { onClick: importTiebaJokes, disabled: !!busy }, busy === 'joke-import-tieba' ? '匯入中…' : '匯入貼吧金句'),
+            h(Btn, { onClick: importWanjiqiJokes, disabled: !!busy }, busy === 'joke-import-wanjiqi' ? '下載中…' : '匯入 wanjiqi 梗庫'),
+            h(Btn, { onClick: addTiebaBars, disabled: !!busy }, busy === 'tieba-bars-add' ? '加入中…' : '加入梗類貼吧（刷貼吧）'),
+          ),
+          h('div', { style: S.grid },
+            h(Field, { label: '新增一個梗' }, h('input', { value: jokeDraft.text, onChange: (event) => setJokeDraft({ ...jokeDraft, text: event.target.value }), placeholder: '例：這波啊，這波是⋯', style: S.input })),
+            h(Field, { label: '用法（可選）' }, h('input', { value: jokeDraft.usage, onChange: (event) => setJokeDraft({ ...jokeDraft, usage: event.target.value }), placeholder: '什麼時候用', style: S.input })),
+          ),
+          h('div', { style: S.row }, h(Btn, { onClick: addJoke, disabled: !!busy, tone: 'primary' }, '新增到梗庫')),
+          jokeEntries.length
+            ? h('div', { style: S.panelBox },
+                h('div', { style: S.fieldTitle }, '梗庫（顯示 ' + Math.min(jokeEntries.length, 40) + ' / ' + jokeEntries.length + '）'),
+                jokeEntries.slice(0, 40).map((entry) => h('div', { key: entry.id, style: { display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 0', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+                  h('span', { style: { flex: '0 0 auto', fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', paddingTop: 2 } }, entry.source || 'manual'),
+                  h('span', { style: { flex: 1, fontSize: 13, lineHeight: 1.5 } }, entry.text, entry.usage ? h('span', { style: { color: 'var(--dsw-alias-label-tertiary)' } }, '（' + entry.usage + '）') : null),
+                  h(Btn, { tone: 'danger', onClick: () => deleteJoke(entry), disabled: !!busy }, '刪除'))))
+            : h('div', { style: S.note }, '梗庫是空的；按上面的匯入或新增。'),
+        ),
+
         // 5. 主動傳訊
         h(
           Card,
-          { id: sectionDomId('nudge'), order: 9, title: '主動傳訊（大肥魚自己找人聊天）', desc: '由插件內建排程器執行：每隔幾分鐘擲骰子，符合條件就請 Agent 主動傳一句；不適合時 Agent 可回 SKIP。' },
+          { id: sectionDomId('nudge'), order: 10, title: '主動傳訊（大肥魚自己找人聊天）', desc: '由插件內建排程器執行：每隔幾分鐘擲骰子，符合條件就請 Agent 主動傳一句；不適合時 Agent 可回 SKIP。' },
           h(Toggle, { checked: !!nudgeCfg.enabled, onChange: (value) => update({ nudge: { enabled: value } }), label: '開啟主動傳訊' }),
           h('div', { style: S.grid },
             h(Field, { label: '每次擲骰機率（0~1）', hint: '例：0.18 ＝ 每輪 18% 機率開口' }, h(Num, { value: nudgeCfg.chance, min: 0, max: 1, step: 0.01, onChange: (value) => update({ nudge: { chance: value } }) })),
@@ -1188,7 +1258,7 @@ window.__ModuleLoader__.load({
         // 5.5 表情包（dsh-meme 圖庫）
         h(
           Card,
-          { id: sectionDomId('meme'), order: 10, title: '表情包（dsh-meme 圖庫）', desc: '角色可以在文字後面配一張圖，也可以只回一張圖。圖片來自 dsh-meme 外掛的圖庫；要新增、分類或改描述，請到 dsh-meme 的設定頁。' },
+          { id: sectionDomId('meme'), order: 11, title: '表情包（dsh-meme 圖庫）', desc: '角色可以在文字後面配一張圖，也可以只回一張圖。圖片來自 dsh-meme 外掛的圖庫；要新增、分類或改描述，請到 dsh-meme 的設定頁。' },
           !memeStatus.available
             ? h('div', { style: S.warnBox }, '沒有偵測到 dsh-meme 外掛（或尚未啟用）。請先安裝並啟用 dsh-meme，這裡才會出現可用圖片。')
             : h('div', null,
@@ -1213,7 +1283,7 @@ window.__ModuleLoader__.load({
         // 6. 使用者
         h(
           Card,
-          { id: sectionDomId('users'), order: 11, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
+          { id: sectionDomId('users'), order: 12, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
           (status.users || []).length === 0
             ? h('div', { style: S.hint }, '還沒有人傳訊息給 bot。')
             : h('table', { style: S.table },
@@ -1249,7 +1319,7 @@ window.__ModuleLoader__.load({
         // 6.5 群組
         h(
           Card,
-          { id: sectionDomId('group'), order: 12, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶；比較晚加入時可以匯入 LINE 匯出的聊天記錄補記憶。' },
+          { id: sectionDomId('group'), order: 13, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶；比較晚加入時可以匯入 LINE 匯出的聊天記錄補記憶。' },
           h('input', { ref: importInput, type: 'file', accept: '.txt,text/plain', style: { display: 'none' }, onChange: importChatFile }),
           h('div', { style: S.grid },
             h(Field, { label: '沒被點名時的回覆機率（%）', hint: '每則群組訊息用這個機率決定要不要回；0 就只在被 @ 或引用時回' },
