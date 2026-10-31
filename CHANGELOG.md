@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1
+- LINE 代理會濾掉 dsh-meme 外掛的「陪伴模式」提示詞（`dsh-expression:companion`）：那套規則叫模型用 `send_meme`／`[表情:]`，在 LINE 沒有對應的配圖器，會和本外掛的標記打架。
+- 表情包提示詞收緊：清單加上情緒與編號、只准 `[[meme:#N]]`、不要呼叫 `send_meme`、不要把標記解釋成文字。
+- 測試：要求表情包時回 `[[meme:#15]]` 並組出 Flex 圖片；一般回覆不會硬加圖。
+
 ## 0.8.0
 
 - 內建診斷：`GET /doctor`、`npx dsh-line-bot doctor [--fix] [--json]`，檢查伺服器／tunnel／公開網址／webhook／dsh-meme／表情包設定／轉圖工具／模型／圖片可送達／最近錯誤。
