@@ -5,6 +5,7 @@
 //   npx dsh-line-bot install [--profile <名稱>] [--version <版本>] [--dry-run]
 //   npx dsh-line-bot uninstall [--profile <名稱>] [--dry-run]
 //   npx dsh-line-bot status [--profile <名稱>]
+//   npx dsh-line-bot doctor [--fix] [--json]
 //
 // 它做的事和 DSH 面板的「安裝 bundle」一樣：
 //   1. 用 DSH 內建的 pnpm 把套件加進 profile；
@@ -20,6 +21,8 @@ import readline from 'node:readline/promises'
 
 const IS_WIN = process.platform === 'win32'
 import { fileURLToPath } from 'node:url'
+
+import { whichCommand, scanLogForErrors, summarizeChecks, check } from '../lib/diagnostics.mjs'
 
 const PKG = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const NAME = PKG.name || 'dsh-line-bot'
@@ -40,7 +43,7 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-  const options = { command: '', profile: '', version: '', spec: '', dryRun: false, enable: true, companions: 'ask' }
+  const options = { command: '', profile: '', version: '', spec: '', dryRun: false, enable: true, companions: 'ask', fix: false, json: false }
   const rest = [...argv]
   options.command = (rest.shift() || 'help').toLowerCase()
   for (let index = 0; index < rest.length; index += 1) {
@@ -68,6 +71,10 @@ function parseArgs(argv) {
       options.companions = 'yes'
     } else if (arg === '--no-companions') {
       options.companions = 'no'
+    } else if (arg === '--fix') {
+      options.fix = true
+    } else if (arg === '--json') {
+      options.json = true
     } else if (arg === '--help' || arg === '-h') {
       options.command = 'help'
     } else {
@@ -289,6 +296,85 @@ async function setupCompanions(profile, options) {
   out('✔ 搭配外掛安裝完成。')
 }
 
+
+async function httpJson(url, timeout = 45000) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(timeout) })
+  const body = await res.json().catch(() => null)
+  if (!res.ok || !body?.ok) throw new Error(body?.error || `HTTP ${res.status}`)
+  return body.value
+}
+
+function offlineDoctor(dataDir, reason) {
+  const checks = []
+  const configPath = path.join(dataDir, 'config.json')
+  let config = null
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')) } catch { /* ignore */ }
+  checks.push(check('config', '設定檔', config ? 'ok' : 'fail', config ? configPath : `找不到 ${configPath}`, config ? '' : '先在 DSH 面板安裝並啟動 dsh-line-bot'))
+  if (config) {
+    const line = config.line || {}
+    checks.push(check('line-config', 'LINE 憑證', line.channelSecret || line.accessToken ? 'ok' : 'fail',
+      line.channelSecret ? '已設定 Channel Secret' : line.accessToken ? '已設定 Access Token' : '沒有憑證',
+      line.channelSecret || line.accessToken ? '' : '面板「LINE 憑證」填入 Channel ID／Secret 或 Access Token'))
+    checks.push(check('server', 'Webhook 伺服器', 'warn', `無法連線（${reason}）`, '確認 DSH 正在執行、外掛已啟動；面板「狀態總覽」可看伺服器狀態'))
+  }
+  const home = dshHome()
+  let memeFound = false
+  try {
+    for (const entry of fs.readdirSync(path.join(home, 'profiles'))) {
+      const candidate = path.join(home, 'profiles', entry, 'node_modules', 'dsh-meme', 'package.json')
+      if (fs.existsSync(candidate)) { memeFound = true; break }
+    }
+  } catch { /* ignore */ }
+  checks.push(check('dsh-meme', 'dsh-meme 圖庫', memeFound ? 'ok' : 'fail',
+    memeFound ? '已安裝' : '沒有在 profile 裡找到 dsh-meme',
+    memeFound ? '' : 'npx dsh-line-bot install --with-companions'))
+  const sips = whichCommand('sips')
+  const ffmpeg = whichCommand('ffmpeg')
+  checks.push(check('converters', '轉圖工具', (sips || ffmpeg) ? 'ok' : 'warn',
+    `sips=${sips ? '有' : '無'} ffmpeg=${ffmpeg ? '有' : '無'}`,
+    ffmpeg ? '' : '安裝 ffmpeg 以支援 GIF／webp 表情包'))
+  const today = new Date().toISOString().slice(0, 10)
+  const recent = scanLogForErrors(path.join(dataDir, 'logs', `${today}.log`))
+  checks.push(check('logs', '最近錯誤', recent.length ? 'warn' : 'ok',
+    recent.length ? recent[recent.length - 1].slice(0, 240) : '沒有最近錯誤',
+    recent.length ? `看完整日誌：${path.join(dataDir, 'logs', `${today}.log`)}` : ''))
+  return { version: PKG.version, at: Date.now(), offline: true, summary: summarizeChecks(checks), checks }
+}
+
+async function commandDoctor(options) {
+  const home = dshHome()
+  const dataDir = path.join(home, 'line-bot')
+  let config = null
+  try { config = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8')) } catch { /* ignore */ }
+  const port = Number(config?.server?.port) || 8791
+  const url = `http://127.0.0.1:${port}/doctor${options.fix ? '?repair=1' : ''}`
+  let result = null
+  let reason = ''
+  try {
+    result = await httpJson(url)
+  } catch (error) {
+    reason = error?.message || String(error)
+    result = offlineDoctor(dataDir, reason)
+  }
+  if (options.json) {
+    out(JSON.stringify(result, null, 2))
+    process.exitCode = result.summary?.fail ? 1 : 0
+    return
+  }
+  const icon = { ok: '✅', warn: '⚠️ ', fail: '❌' }
+  out(`dsh-line-bot ${result.version || PKG.version} 診斷${result.offline ? '（離線）' : ''}`)
+  for (const item of result.checks) {
+    out(`${icon[item.status] || '•'} ${item.title}：${item.detail}`)
+    if (item.fix) out(`   → ${item.fix}`)
+  }
+  const summary = result.summary || summarizeChecks(result.checks)
+  out(`\n結果：${summary.ok} 正常、${summary.warn} 提醒、${summary.fail} 失敗`)
+  if (result.offline) {
+    out('提示：伺服器在執行時，doctor 會自動測公開網址、webhook 與圖片可送達；修復請用 npx dsh-line-bot doctor --fix。')
+  }
+  process.exitCode = summary.fail ? 1 : 0
+}
+
 async function commandInstall(options) {
   const profile = pickProfile(options.profile)
   const { dir, file, manifest } = readManifest(profile)
@@ -409,6 +495,10 @@ switch (options.command) {
   case 'uninstall':
   case 'remove':
     commandUninstall(options)
+    break
+  case 'doctor':
+  case 'diagnose':
+    await commandDoctor(options)
     break
   case 'status':
   case 'list':

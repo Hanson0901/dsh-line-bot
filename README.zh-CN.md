@@ -206,6 +206,11 @@ Bot 被加入群组（或多人聊天室）后：
 - 面板「表情包」卡可以开关、限制每次最多几张（1～3），并预览图库样本。要新增图片或改分类，请用 dsh-meme 自己的设置。
 - 收到 LINE 贴图时，会抓贴图图片交给模型看（支持图片的模型直接读图，否则用 LINE 提供的关键词），角色才能接住贴图的情绪。可在「LINE 凭证」卡关闭「看得懂贴图」。
 - 没安装 dsh-meme 时该功能会自动停用，只回文字。
+## 诊断与修复
+- 面板「高级设置 → 执行诊断」会检查服务器、Tunnel、公开网址、webhook、表情包图库、转图工具、模型与最近错误；「自动修复（安全）」只会重连 tunnel、重设 webhook。
+- 终端：`npx dsh-line-bot doctor`、`npx dsh-line-bot doctor --fix`、`doctor --json`。
+- 给 Agent 的调试流程在 `AGENTS.md`，症状对照在 `TROUBLESHOOTING.md`。
+
 ## 疑难排解
 
 - **面板显示「无法连接到 LINE Bot 运行时」**：webServer 可能还没就绪，刷新即可；仍失败就看 DSH 日志里 `[line-bot]` 的消息。

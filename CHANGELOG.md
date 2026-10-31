@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+
+- 內建診斷：`GET /doctor`、`npx dsh-line-bot doctor [--fix] [--json]`，檢查伺服器／tunnel／公開網址／webhook／dsh-meme／表情包設定／轉圖工具／模型／圖片可送達／最近錯誤。
+- 面板「進階設定」新增「執行診斷」與「自動修復（安全）」。
+- 修正：Flex 圖片訊息（`hero.url`）在診斷中會被正確辨識；表情包描述改用圖庫樣本比對，長描述也能命中。
+- 新增 `AGENTS.md`（給 DSH Agent 的除錯流程）與 `TROUBLESHOOTING.md`（症狀對照）。
+
 ## 0.7.2
 
 - 匯入聊天時若成員還沒對應到 LINE 帳號，先用「名字」記住；本人第一次在群組發言時，這些記憶也會一起帶入。

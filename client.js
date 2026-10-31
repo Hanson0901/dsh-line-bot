@@ -357,6 +357,7 @@ window.__ModuleLoader__.load({
       const [memoryData, setMemoryData] = useState(null)
       const [modelCatalog, setModelCatalog] = useState(null)
       const [importGroup, setImportGroup] = useState('')
+      const [doctorResult, setDoctorResult] = useState(null)
       const importInput = useRef(null)
       const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
@@ -514,6 +515,22 @@ window.__ModuleLoader__.load({
       async function runMemory(action) {
         await act(action)
         await loadMemory({ quiet: true })
+      }
+
+      async function runDoctor(repair) {
+        setBusy('diagnose')
+        try {
+          const value = await jpost('/action', { action: 'diagnose', payload: { repair: repair === true } })
+          const result = value?.result || null
+          setDoctorResult(result)
+          if (value?.status) { setStatus(value.status); setDraft(stripSecrets(value.status.config || {})); }
+          const summary = result?.summary || {}
+          setToast({ kind: summary.fail ? 'err' : 'ok', text: `診斷完成：${summary.ok || 0} 正常、${summary.warn || 0} 提醒、${summary.fail || 0} 失敗。` })
+        } catch (error) {
+          setToast({ kind: 'err', text: error?.message || String(error) })
+        } finally {
+          setBusy('')
+        }
       }
 
       async function importChatFile(event) {
@@ -1305,7 +1322,19 @@ window.__ModuleLoader__.load({
           h('div', { style: S.row },
             h(Btn, { onClick: () => act('logs-clear'), disabled: !!busy, tone: 'danger' }, '清除日誌'),
             h(Btn, { onClick: devReload, disabled: !!busy }, '重新載入 host 模組（開發用）'),
+            h(Btn, { onClick: () => runDoctor(false), disabled: !!busy }, busy === 'diagnose' ? '診斷中…' : '執行診斷'),
+            h(Btn, { onClick: () => runDoctor(true), disabled: !!busy }, '自動修復（安全）'),
           ),
+          doctorResult
+            ? h('div', { style: S.panelBox },
+                h('div', { style: S.fieldTitle }, `診斷結果（${(doctorResult.summary && doctorResult.summary.ok) || 0} 正常 / ${(doctorResult.summary && doctorResult.summary.warn) || 0} 提醒 / ${(doctorResult.summary && doctorResult.summary.fail) || 0} 失敗）`),
+                (doctorResult.checks || []).map((item) => h('div', { key: item.id, style: { padding: '6px 0', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+                  h('div', { style: { fontSize: 13 } }, `${item.status === 'ok' ? '✅' : item.status === 'warn' ? '⚠️' : '❌'} ${item.title}：${item.detail}`),
+                  item.fix ? h('div', { style: { ...S.hint, marginTop: 2 } }, `→ ${item.fix}`) : null,
+                )),
+              )
+            : h('div', { style: S.hint }, '「執行診斷」會檢查伺服器、tunnel、公開網址、webhook、表情包圖庫、轉圖工具、模型與最近錯誤；「自動修復」只做重連 tunnel、重設 webhook 這類安全動作。'),
+          h('div', { style: S.label }, '即時日誌'),
           h(KV, {
             rows: [
               ['資料夾', status.paths?.dataDir || '—'],

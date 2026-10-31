@@ -206,6 +206,11 @@ The persona can attach a sticker to a text reply, or reply with just an image. I
 - The panel's "Memes" card can disable the feature, limit images per reply (1–3), and preview library samples. To add or re-tag images, use dsh-meme's own settings.
 - When a LINE sticker arrives, the bot fetches the sticker image and shows it to the model (vision-capable models read the image; otherwise the bot falls back to the keywords LINE provides), so the persona can react to the mood. Turn "Understand stickers" off in the LINE credentials card to use keywords only.
 - Without dsh-meme installed, the feature stays off and replies are text only.
+## Diagnostics
+- Panel → Advanced → Run diagnostics checks the server, tunnel, public URL, webhook, dsh-meme library, image converters, model, and recent errors; Safe repair only reconnects the tunnel and re-applies the webhook.
+- CLI: `npx dsh-line-bot doctor`, `doctor --fix`, `doctor --json`.
+- Agent playbook: `AGENTS.md`; symptom table: `TROUBLESHOOTING.md`.
+
 ## Troubleshooting
 
 - **The panel says "cannot connect to the LINE Bot runtime"**: webServer may not be ready yet; refresh. If it still fails, look for `[line-bot]` messages in the DSH logs.
