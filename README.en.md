@@ -71,11 +71,13 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Section | Contents |
 | --- | --- |
 | Overview | Green-light status for webhook server / tunnel / LINE / persona / proactive messages, public URL, one-click bring-up and start/stop |
-| DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown |
-| Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
 | LINE credentials | Channel ID, Channel Secret, Access Token, auto-issue, loading animation, bot info, webhook apply/test, allow-list |
 | Cloudflare Tunnel | quick / API token modes, token, hostname, tunnel name, Account/Zone ID, download cloudflared, start/stop, auto-configure webhook, bring your own public URL |
+| Model & provider | Pick the provider/model and reasoning effort for LINE replies; disables DeepSeek balance when the provider is not deepseek-account |
 | Reply persona | Choose a persona (dafeiyu or a plugin custom one), add/edit/delete custom personas, copy the current persona into a custom one, enforce, allow users to switch personas, switch dafeiyu to session mode, test an Agent reply |
+| Tieba learning sync | Writes the tone samples learned while browsing Tieba back into the persona's "Tieba tone" section, preview diff, sync now |
+| Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
+| DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
 | Proactive messages | Toggle, probability, interval, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics |
 | Users | The DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
 | Advanced | Port, Agent provider/model/effort/cwd/timeout, one workspace per user (and its root), welcome/error/empty replies, logs, reload host modules (dev) |
@@ -95,6 +97,15 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 3. It creates/resumes the Agent in the same DSH process with `agents.create` / `agents.resume`, sends one user message with `followup`, and waits for the turn to end, subagents to settle, and the session to flush.
 4. It takes the last assistant text from the session events and replies with LINE reply; if the reply token has expired it falls back to push.
 5. The proactive-message scheduler checks once a minute (interval, quiet hours, caps, probability); when conditions are met it asks the Agent to say something on its own and pushes it.
+
+## Model & provider
+
+The "Model & provider" card chooses the provider/model used for LINE replies:
+
+- Providers come from this DSH profile; models are fetched live and the first one is preselected when you pick a provider.
+- "Follow DSH default" leaves the choice to `agentDefaultModel` (the panel shows the effective value).
+- Reasoning effort can stay empty to use the provider default.
+- DeepSeek balance and low-balance reminders only work when the provider is `deepseek-account`; other providers grey out that card, and switching back restores it.
 
 ## Persona sources
 

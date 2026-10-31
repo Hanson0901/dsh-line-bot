@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- 新增「模型與接口來源」：可選這個 DSH profile 已註冊的 provider 與模型、推理強度；留空則跟隨 DSH 預設。
+- DeepSeek 餘額只適用 `deepseek-account`：切成其他 provider 時，餘額卡會反白停用、不再抓餘額，也不會主動提醒儲值。
+- 面板順序調整：LINE 憑證移到第 2、Cloudflare Tunnel 第 3，模型與來源第 4。
+
 ## 0.3.1
 
 - 修好 Windows 安裝：`npx dsh-line-bot install` 現在會找到 DeepSeek Harness 內建的 pnpm（`%LOCALAPPDATA%\Programs\…`、`%PROGRAMFILES%`），也會正確透過 `shell` 執行 `dsh.cmd` / `pnpm.cmd`。

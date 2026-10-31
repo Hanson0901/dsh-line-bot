@@ -71,11 +71,13 @@ dsh plugin --profile desktop add dsh-line-bot
 | セクション | 内容 |
 | --- | --- |
 | 概要 | webhook サーバー／トンネル／LINE／ペルソナ／自発メッセージの状態、公開 URL、ワンクリック起動と停止 |
-| DeepSeek 残高 | 現在の残高、毎ターンの注入、残高が少ないときの主動リマインド、しきい値とクールダウン |
-| 個人メモリ | ユーザーごとの長期記憶、期限切れの自動削除、毎日の自己整理、手動削除 |
 | LINE 認証情報 | Channel ID、Channel Secret、Access Token、自動発行、ローディング表示、bot 情報、webhook の適用／テスト、許可リスト |
 | Cloudflare Tunnel | quick／API トークンモード、トークン、hostname、トンネル名、Account／Zone ID、cloudflared のダウンロード、起動／停止、webhook 自動設定、独自の公開 URL |
+| モデルとプロバイダー | LINE 返信で使う provider／モデルと推論強度を選択。deepseek-account 以外では DeepSeek 残高を自動で無効化 |
 | 返信ペルソナ | ペルソナ選択（大肥魚またはプラグインのカスタム）、カスタムペルソナの追加・編集・削除、現在のペルソナをカスタムに複製、強制適用、ユーザーによる切り替え許可、大肥魚を session モードに切り替え、Agent 返信のテスト |
+| 貼吧学習の同期 | 貼吧で学んだ口調をペルソナの「貼吧学来的口气」節に書き戻す、差分プレビュー、今すぐ同期 |
+| 個人メモリ | ユーザーごとの長期記憶、期限切れの自動削除、毎日の自己整理、手動削除 |
+| DeepSeek 残高 | 現在の残高、毎ターンの注入、残高が少ないときの主動リマインド、しきい値とクールダウン（deepseek-account のみ） |
 | 自発メッセージ | オン／オフ、確率、間隔、1 日／1 か月の上限、最短間隔、静かな時間帯、idle、対象ユーザー、プロンプト、今すぐ試送、統計 |
 | ユーザー | LINE ユーザーごとに対応する DSH セッション、専用ワークスペース、現在のペルソナ（直接変更可）、メッセージ数、最終やりとり、メモリ消去／セッション再作成 |
 | 詳細設定 | ポート、Agent の provider/model/effort/cwd/タイムアウト、ユーザーごとのワークスペース（ルート含む）、ウェルカム／エラー／空返信、ログ、開発用 host リロード |
@@ -95,6 +97,15 @@ dsh plugin --profile desktop add dsh-line-bot
 3. `agents.create`／`agents.resume` で同じ DSH プロセス内に Agent を作成／再開し、`followup` でユーザーメッセージを 1 件送り、ターン終了・サブエージェントの収束・セッションの flush を待ちます。
 4. セッションイベントから最後の assistant テキストを取り出し、LINE の reply で返信します。reply token が切れていたら自動で push に切り替えます。
 5. 自発メッセージのスケジューラーが 1 分ごとに確認し（間隔、静かな時間帯、上限、確率）、条件を満たせば Agent に一言話してもらって push します。
+
+## モデルとプロバイダー
+
+「モデルとプロバイダー」カードは LINE 返信で使う provider／モデルを決めます：
+
+- provider はこの DSH profile に登録されているもの、モデルはライブで取得し、provider を選ぶと最初のモデルが入ります。
+- 「DSH のデフォルトに従う」は `agentDefaultModel` の provider／model をそのまま使います（実際の値はパネルに表示）。
+- 推論強度は空欄なら provider のデフォルト。
+- provider が `deepseek-account` のときだけ DeepSeek 残高と残高リマインドが動きます。他の provider ではカードがグレーアウトして無効になり、戻すと復帰します。
 
 ## ペルソナのソース
 

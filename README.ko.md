@@ -71,11 +71,13 @@ dsh plugin --profile desktop add dsh-line-bot
 | 섹션 | 내용 |
 | --- | --- |
 | 개요 | webhook 서버／터널／LINE／페르소나／능동 메시지 상태, 공개 URL, 원클릭 기동과 시작/중지 |
-| DeepSeek 잔액 | 현재 잔액, 매 턴 주입, 잔액이 적을 때 캐릭터가 먼저 알림, 기준 금액과 쿨다운 |
-| 개인 기억 | 사용자별 장기 기억, 만료 자동 삭제, 매일 자기 정리, 수동 삭제 |
 | LINE 자격 증명 | Channel ID, Channel Secret, Access Token, 자동 발급, 로딩 표시, bot 정보, webhook 적용/테스트, 허용 목록 |
 | Cloudflare Tunnel | quick／API 토큰 모드, 토큰, hostname, 터널 이름, Account／Zone ID, cloudflared 다운로드, 시작/중지, webhook 자동 설정, 직접 제공하는 공개 URL |
+| 모델과 공급자 | LINE 답장에 쓸 provider／모델과 추론 강도 선택. deepseek-account가 아니면 DeepSeek 잔액 자동 비활성화 |
 | 답장 페르소나 | 페르소나 선택(大肥魚 또는 플러그인 커스텀), 커스텀 페르소나 추가/편집/삭제, 현재 페르소나를 커스텀으로 복사, 강제 적용, 사용자 직접 전환 허용, 大肥魚를 session 모드로 전환, Agent 답장 테스트 |
+| 貼吧 학습 동기화 | 貼吧에서 배운 말투를 페르소나의 「貼吧学来的口气」 섹션으로 기록, 차이 미리보기, 지금 동기화 |
+| 개인 기억 | 사용자별 장기 기억, 만료 자동 삭제, 매일 자기 정리, 수동 삭제 |
+| DeepSeek 잔액 | 현재 잔액, 매 턴 주입, 잔액이 적을 때 캐릭터가 먼저 알림, 기준 금액과 쿨다운(deepseek-account 전용) |
 | 능동 메시지 | 켜기/끄기, 확률, 간격, 일일/월간 상한, 최소 간격, 조용한 시간대, idle, 대상 사용자, 프롬프트, 지금 시험 발송, 통계 |
 | 사용자 | LINE 사용자별 DSH 세션, 전용 작업 폴더, 현재 페르소나(직접 변경 가능), 메시지 수, 마지막 상호작용, 기억 지우기／세션 재설정 |
 | 고급 설정 | 포트, Agent provider/model/effort/cwd/타임아웃, 사용자별 작업 폴더(루트 포함), 환영／오류／빈 답장, 로그, 개발용 host 리로드 |
@@ -95,6 +97,15 @@ dsh plugin --profile desktop add dsh-line-bot
 3. `agents.create`／`agents.resume`로 같은 DSH 프로세스 안에서 Agent를 만들거나 이어 받고, `followup`으로 사용자 메시지 하나를 보낸 뒤 turn 종료, 하위 에이전트 수렴, 세션 flush를 기다립니다.
 4. 세션 이벤트에서 마지막 assistant 텍스트를 꺼내 LINE reply로 답장합니다. reply token이 만료되었으면 자동으로 push로 전환합니다.
 5. 능동 메시지 스케줄러가 1분마다 확인하고(간격, 조용한 시간대, 상한, 확률) 조건을 만족하면 Agent에게 한마디 하게 한 뒤 push합니다.
+
+## 모델과 공급자
+
+「모델과 공급자」카드는 LINE 답장에 쓸 provider／모델을 정합니다:
+
+- provider는 이 DSH profile에 등록된 목록, 모델은 실시간으로 읽어 오며 provider를 고르면 첫 모델이 자동 입력됩니다.
+- 「DSH 기본값 따르기」는 `agentDefaultModel`의 provider／모델을 그대로 씁니다(패널에 실제 값 표시).
+- 추론 강도는 비워 두면 provider 기본값.
+- provider가 `deepseek-account`일 때만 DeepSeek 잔액과 잔액 알림이 동작합니다. 다른 provider에서는 카드가 회색으로 비활성화되고, 돌아오면 복구됩니다.
 
 ## 페르소나 출처
 

@@ -71,11 +71,13 @@ dsh plugin --profile desktop add dsh-line-bot
 | 區塊 | 內容 |
 | --- | --- |
 | 狀態總覽 | webhook server／隧道／LINE／人設／主動傳訊的綠燈狀態、公開網址、一鍵上線與啟停 |
-| DeepSeek 餘額 | 目前餘額、每輪注入、低於門檻時由角色主動提醒、提醒門檻與冷卻 |
-| 個人記憶 | 每位使用者分開的長期記憶、到期自動刪、每日請角色整理、手動刪除 |
 | LINE 憑證 | Channel ID、Channel Secret、Access Token、自動簽發、loading 動畫、bot 資訊、webhook 套用／測試、白名單 |
 | Cloudflare Tunnel | quick／API Token 模式、Token、hostname、隧道名稱、Account／Zone ID、下載 cloudflared、啟停、自動設定 webhook、自行提供的公開網址 |
+| 模型與接口來源 | 選擇 LINE 回覆的 provider／模型與推理強度；非 deepseek-account 時自動停用 DeepSeek 餘額 |
 | 回覆人設 | 選擇人設（大肥魚或插件自訂）、新增／編輯／刪除自訂人設、把目前人設複製成自訂、強制套用、允許使用者自己換人設、切換大肥魚 session 模式、測試 Agent 回覆 |
+| 貼吧學習同步 | 把刷貼吧學到的語氣寫回人設的「貼吧學來的口氣」段、預覽差異、立即同步 |
+| 個人記憶 | 每位使用者分開的長期記憶、到期自動刪、每日請角色整理、手動刪除 |
+| DeepSeek 餘額 | 目前餘額、每輪注入、低於門檻時由角色主動提醒、提醒門檻與冷卻（僅 deepseek-account） |
 | 主動傳訊 | 開關、機率、間隔、每日／每月上限、最短間隔、安靜時段、idle、指定對象、提示詞、立即試傳、統計 |
 | 使用者 | 每位 LINE 使用者對應的 DSH session、專屬工作資料夾、目前人設（可直接改）、訊息數、上次互動、清空記憶／重設 session |
 | 進階設定 | 連接埠、Agent provider/model/effort/cwd/逾時、一人一個工作資料夾（含根目錄）、歡迎／錯誤／空回覆、日誌、開發用 host 重新載入 |
@@ -95,6 +97,15 @@ dsh plugin --profile desktop add dsh-line-bot
 3. 用 `agents.create`／`agents.resume` 在同一個 DSH 行程內建立／接續 Agent，`followup` 一則使用者訊息，等到 turn 結束、子代理收斂、session flush。
 4. 從 session 事件取出最後一段 assistant 文字，用 LINE reply 回覆；reply token 過期就自動改 push。
 5. 主動傳訊排程器每分鐘檢查一次（間隔、安靜時段、上限、機率），符合條件就請 Agent 主動說一句，再 push 出去。
+
+## 模型與接口來源
+
+「模型與接口來源」卡決定 LINE 回覆要用哪個 provider／模型：
+
+- 來源清單來自這個 DSH profile 已註冊的 provider；模型清單即時讀取，選 provider 後會自動帶入第一個模型。
+- 「跟隨 DSH 預設」＝不覆寫，使用 `agentDefaultModel` 目前的 provider／model（面板會顯示實際值）。
+- 推理強度可留空跟隨 provider 預設。
+- 只有 provider 是 `deepseek-account` 時，DeepSeek 餘額與低餘額提醒才會運作；切到其他來源時該卡會反白停用，切回即恢復。
 
 ## 人設來源
 

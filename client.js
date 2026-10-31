@@ -13,12 +13,13 @@ window.__ModuleLoader__.load({
     // 二級選單：卡片區塊的快速跳轉。
     const NAV = [
       { key: 'overview', label: '狀態總覽' },
-      { key: 'balance', label: 'DeepSeek 餘額' },
-      { key: 'memory', label: '個人記憶' },
       { key: 'line', label: 'LINE 憑證' },
       { key: 'tunnel', label: 'Cloudflare' },
+      { key: 'model', label: '模型與來源' },
       { key: 'persona', label: '回覆人設' },
       { key: 'sync', label: '貼吧同步' },
+      { key: 'memory', label: '個人記憶' },
+      { key: 'balance', label: 'DeepSeek 餘額' },
       { key: 'nudge', label: '主動傳訊' },
       { key: 'users', label: '使用者' },
       { key: 'advanced', label: '進階／日誌' },
@@ -187,10 +188,10 @@ window.__ModuleLoader__.load({
       return h('button', { type: 'button', style, onClick: disabled ? undefined : onClick, disabled: !!disabled, title: title || '' }, children)
     }
 
-    function Card({ id, title, desc, right, children }) {
+    function Card({ id, title, desc, right, children, order }) {
       return h(
         'section',
-        { id, 'data-section': id || undefined, style: { ...S.card, scrollMarginTop: 104 } },
+        { id, 'data-section': id || undefined, style: { ...S.card, scrollMarginTop: 104, ...(order ? { order } : {}) } },
         h('div', { style: S.cardHead }, h('div', null, h('div', { style: S.cardTitle }, title), desc ? h('div', { style: S.cardDesc }, desc) : null), right || null),
         h('div', { style: S.cardBody }, children),
       )
@@ -293,6 +294,7 @@ window.__ModuleLoader__.load({
       'persona-status': '重新讀取人設',
       'persona-mode': '切換人設模式',
       'tieba-preview': '預覽貼吧同步差異',
+      'model-catalog': '讀取模型清單',
       'balance-refresh': '查詢 DeepSeek 餘額',
       'memory-list': '讀取個人記憶',
       'memory-delete': '刪除記憶',
@@ -323,6 +325,7 @@ window.__ModuleLoader__.load({
       const [syncPreview, setSyncPreview] = useState(null)
       const [balancePreview, setBalancePreview] = useState(null)
       const [memoryData, setMemoryData] = useState(null)
+      const [modelCatalog, setModelCatalog] = useState(null)
       const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
       const dirty = useMemo(() => {
@@ -481,8 +484,26 @@ window.__ModuleLoader__.load({
         await loadMemory({ quiet: true })
       }
 
+      async function loadModelCatalog({ quiet = false, force = false } = {}) {
+        if (!quiet) setBusy('model-catalog')
+        try {
+          if (dirty && !quiet) await persist(false)
+          const value = await jpost('/action', { action: 'model-catalog', payload: force ? { force: true } : {} })
+          if (value?.status) {
+            setStatus(value.status)
+            setDraft(stripSecrets(value.status.config))
+          }
+          setModelCatalog(value?.result || null)
+        } catch (err) {
+          if (!quiet) setToast({ kind: 'error', text: '讀取模型清單失敗：' + (err.message || err) })
+        } finally {
+          if (!quiet) setBusy('')
+        }
+      }
+
       useEffect(() => {
         loadMemory({ quiet: true })
+        loadModelCatalog({ quiet: true })
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [])
 
@@ -618,6 +639,8 @@ window.__ModuleLoader__.load({
       const balanceTotal = balanceStatus.cny ? balanceStatus.cny.total : balanceStatus.usd ? balanceStatus.usd.total : null
       const memoryCfg = cfg.memory || {}
       const memoryStatus = status.memory || {}
+      const agentStatus = status.agent || {}
+      const modelProviders = Array.isArray(modelCatalog?.providers) ? modelCatalog.providers : []
       const memoryUsers = memoryData?.users || []
       const syncStats = status.sync || {}
       const runtime = status
@@ -678,7 +701,7 @@ window.__ModuleLoader__.load({
         // 1. 狀態總覽
         h(
           Card,
-          { id: sectionDomId('overview'), title: '狀態總覽', desc: '綠燈＝已就緒。第一次使用建議依序：填入 LINE 憑證 → 啟動 webhook → 啟動隧道。', right: h(Btn, { tone: 'primary', onClick: () => act('setup'), disabled: !!busy }, busy === 'setup' ? '上線中…' : '一鍵上線') },
+          { id: sectionDomId('overview'), order: 1, title: '狀態總覽', desc: '綠燈＝已就緒。第一次使用建議依序：填入 LINE 憑證 → 啟動 webhook → 啟動隧道。', right: h(Btn, { tone: 'primary', onClick: () => act('setup'), disabled: !!busy }, busy === 'setup' ? '上線中…' : '一鍵上線') },
           h(
             'div',
             { style: S.row },
@@ -705,11 +728,20 @@ window.__ModuleLoader__.load({
         h(
           Card,
           {
-            id: sectionDomId('balance'),
+            id: sectionDomId('balance'), order: 8,
             title: 'DeepSeek 餘額',
-            desc: '讓角色知道 API 錢包剩多少；低於門檻時由角色自己想一句話提醒你儲值（會避開主動傳訊的靜音時段）。',
-            right: h(Btn, { onClick: () => act('balance-refresh'), disabled: !!busy }, busy === 'balance-refresh' ? '查詢中…' : '重新查詢'),
+            desc: '讓角色知道 API 錢包剩多少；低於門檻時由角色自己想一句話提醒你儲值（會避開主動傳訊的靜音時段）。只有模型來源是 deepseek-account 時才適用。',
+            right: h(Btn, { onClick: () => act('balance-refresh'), disabled: !!busy || balanceStatus.applicable === false }, busy === 'balance-refresh' ? '查詢中…' : '重新查詢'),
           },
+          balanceStatus.applicable === false
+            ? h('div', { style: S.warnBox }, `目前模型來源是「${agentStatus.provider || '未設定'}」，不是 DeepSeek 官方帳號，所以餘額查詢與主動提醒已停用。把上面的「模型與接口來源」切回 deepseek-account 就會自動恢復。`)
+            : null,
+          h(
+            'fieldset',
+            {
+              disabled: balanceStatus.applicable === false,
+              style: { border: 0, margin: 0, padding: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12, ...(balanceStatus.applicable === false ? { opacity: 0.45 } : {}) },
+            },
           h(
             'div',
             { style: S.row },
@@ -756,13 +788,14 @@ window.__ModuleLoader__.load({
             h(Btn, { tone: 'primary', onClick: askBalance, disabled: !!busy }, '立即提醒一次'),
           ),
           balancePreview && balancePreview.text ? h('div', { style: S.panelBox }, h('div', { style: S.fieldTitle }, '角色會傳這則：'), h('pre', { style: S.pre }, balancePreview.text)) : null,
+          ),
         ),
 
         // 1.6 個人記憶
         h(
           Card,
           {
-            id: sectionDomId('memory'),
+            id: sectionDomId('memory'), order: 7,
             title: '個人記憶',
             desc: '每位使用者分開。角色覺得重要的事會自己記下來；有期限的到期自動刪，每天也會請角色自己整理一次。',
             right: h(Btn, { onClick: () => loadMemory(), disabled: !!busy }, busy === 'memory-list' ? '讀取中…' : '重新整理'),
@@ -808,7 +841,7 @@ window.__ModuleLoader__.load({
         // 2. LINE 憑證
         h(
           Card,
-          { id: sectionDomId('line'), title: 'LINE 憑證', desc: '在 LINE Developers Console 的 Messaging API channel 取得。貼上後可按「驗證」確認。' },
+          { id: sectionDomId('line'), order: 2, title: 'LINE 憑證', desc: '在 LINE Developers Console 的 Messaging API channel 取得。貼上後可按「驗證」確認。' },
           h(
             'div',
             { style: S.note },
@@ -854,7 +887,7 @@ window.__ModuleLoader__.load({
         // 3. Cloudflare Tunnel
         h(
           Card,
-          { id: sectionDomId('tunnel'), title: 'Cloudflare Tunnel', desc: '把 127.0.0.1 的 webhook 公開到 https，LINE 才收得到。Quick tunnel 免 token、網址每次不同；API Token 模式可固定網域。' },
+          { id: sectionDomId('tunnel'), order: 3, title: 'Cloudflare Tunnel', desc: '把 127.0.0.1 的 webhook 公開到 https，LINE 才收得到。Quick tunnel 免 token、網址每次不同；API Token 模式可固定網域。' },
           h('div', { style: S.grid },
             h(Field, { label: '模式' },
               h('select', {
@@ -892,10 +925,70 @@ window.__ModuleLoader__.load({
           h('div', { style: S.hint }, 'Quick tunnel 每次重啟網址都會變；若 LINE 的 webhook 沒自動更新，按上面「把隧道網址套到 webhook」。API Token 模式需要先在 Cloudflare 建立 API Token（權限：Account → Cloudflare Tunnel → Edit；Zone → DNS → Edit）。若驗證後面板沒自動帶入帳號／Zone，代表 token 少了 Account Settings:Read／Zone:Read，請手動填 Account ID 與 Zone ID（或幫 token 補上讀取權限）。'),
         ),
 
+        // 3.5 模型與接口來源
+        h(
+          Card,
+          {
+            id: sectionDomId('model'),
+            order: 4,
+            title: '模型與接口來源',
+            desc: 'LINE 回覆要用的 provider／模型。留空＝跟隨 DSH 目前的預設；選非 DeepSeek 的來源時，下面的餘額功能會自動停用。',
+            right: h(Btn, { onClick: () => loadModelCatalog({ force: true }), disabled: !!busy }, busy === 'model-catalog' ? '讀取中…' : '重新讀取清單'),
+          },
+          h(KV, {
+            rows: [
+              ['目前使用', `${agentStatus.provider || '—'} / ${agentStatus.model || '—'}${agentStatus.source === 'custom' ? '（面板指定）' : '（跟隨 DSH 預設）'}`],
+              ['DSH 預設', `${agentStatus.defaultProvider || '—'} / ${agentStatus.defaultModel || '—'}`],
+              ['餘額功能', agentStatus.provider === 'deepseek-account' ? '可用（DeepSeek 官方帳號）' : '已停用（不是 deepseek-account）'],
+            ],
+          }),
+          h('div', { style: S.grid },
+            h(Field, { label: '模型接口來源（provider）', hint: '清單來自這個 DSH profile 已註冊的 provider' },
+              h('select', {
+                style: S.input,
+                value: draft.agent.provider || '',
+                onChange: (event) => {
+                  const provider = event.target.value
+                  const entry = modelProviders.find((item) => item.id === provider)
+                  const first = entry?.models?.[0]?.id || ''
+                  update({ agent: { provider, model: provider ? first : '' } })
+                },
+              },
+                h('option', { value: '' }, `跟隨 DSH 預設${agentStatus.defaultProvider ? `（${agentStatus.defaultProvider} / ${agentStatus.defaultModel}）` : ''}`),
+                modelProviders.map((item) => h('option', { key: item.id, value: item.id }, `${item.name}（${item.id}）${item.models?.length ? '' : ' · 無模型資料'}`)),
+                draft.agent.provider && !modelProviders.some((item) => item.id === draft.agent.provider)
+                  ? h('option', { value: draft.agent.provider }, draft.agent.provider)
+                  : null,
+              )),
+            h(Field, { label: '模型', hint: '可直接輸入模型 id，或從清單選' },
+              h('input', {
+                style: S.input,
+                list: 'line-bot-model-options',
+                value: draft.agent.model || '',
+                placeholder: '留空＝跟隨預設；例：deepseek-flash',
+                onChange: (event) => update({ agent: { model: event.target.value } }),
+              }),
+              h('datalist', { id: 'line-bot-model-options' },
+                ((modelProviders.find((item) => item.id === (draft.agent.provider || agentStatus.defaultProvider)) || {}).models || []).map((item) => h('option', { key: item.id, value: item.id }, item.name))),
+            ),
+            h(Field, { label: '推理強度（選填）', hint: '留空＝跟隨 provider 預設' },
+              h(Text, { value: draft.agent.reasoningEffort || '', onChange: (value) => update({ agent: { reasoningEffort: value } }), placeholder: 'max / high / medium' })),
+          ),
+          h('div', { style: S.note }, modelCatalog?.error
+            ? `讀取模型清單失敗：${modelCatalog.error}`
+            : modelCatalog
+              ? `共 ${modelProviders.length} 個來源。清單只列已註冊的 provider；實際能不能用仍取決於該來源的憑證。`
+              : '正在讀取模型清單…'),
+          h('div', { style: S.row },
+            h(Btn, { onClick: () => loadModelCatalog({ force: true }), disabled: !!busy }, busy === 'model-catalog' ? '讀取中…' : '重新讀取模型清單'),
+            h(Btn, { onClick: () => act('agent-test', { text: '請用一句話確認你現在用的模型來源。' }), disabled: !!busy }, busy === 'agent-test' ? '測試中…' : '測試 Agent 回覆'),
+          ),
+        ),
+
         // 4. 人設
         h(
           Card,
-          { id: sectionDomId('persona'), title: '回覆人設', desc: 'LINE 的回覆會套用這裡選的人設。來源有兩種：大肥魚插件（有安裝時）、插件自己的自訂人設（不依賴任何外掛）。' },
+          { id: sectionDomId('persona'), order: 5, title: '回覆人設', desc: 'LINE 的回覆會套用這裡選的人設。來源有兩種：大肥魚插件（有安裝時）、插件自己的自訂人設（不依賴任何外掛）。' },
           persona.warning ? h('div', { style: S.warnBox }, persona.warning) : null,
           persona.error ? h('div', { style: S.warnBox }, `讀不到大肥魚插件：${persona.error}`) : null,
           h('div', { style: S.grid },
@@ -956,7 +1049,7 @@ window.__ModuleLoader__.load({
         // 4b. 貼吧學習同步
         h(
           Card,
-          { id: sectionDomId('sync'), title: '貼吧學習同步', desc: '把「刷貼吧」每天演化學到的語氣樣本，寫回上方人設的「## 貼吧學來的口氣」段落，並重載大肥魚插件讓它立即生效。' },
+          { id: sectionDomId('sync'), order: 6, title: '貼吧學習同步', desc: '把「刷貼吧」每天演化學到的語氣樣本，寫回上方人設的「## 貼吧學來的口氣」段落，並重載大肥魚插件讓它立即生效。' },
           h(Toggle, { checked: syncCfg.enabled !== false, onChange: (value) => update({ sync: { enabled: value } }), label: '開啟自動同步', hint: '每小時檢查一次；貼吧人設版本有變才寫入（寫入前會備份 personas.json）' }),
           h('div', { style: S.grid },
             h(Field, { label: '同步到哪個人設' },
@@ -986,7 +1079,7 @@ window.__ModuleLoader__.load({
         // 5. 主動傳訊
         h(
           Card,
-          { id: sectionDomId('nudge'), title: '主動傳訊（大肥魚自己找人聊天）', desc: '由插件內建排程器執行：每隔幾分鐘擲骰子，符合條件就請 Agent 主動傳一句；不適合時 Agent 可回 SKIP。' },
+          { id: sectionDomId('nudge'), order: 9, title: '主動傳訊（大肥魚自己找人聊天）', desc: '由插件內建排程器執行：每隔幾分鐘擲骰子，符合條件就請 Agent 主動傳一句；不適合時 Agent 可回 SKIP。' },
           h(Toggle, { checked: !!nudgeCfg.enabled, onChange: (value) => update({ nudge: { enabled: value } }), label: '開啟主動傳訊' }),
           h('div', { style: S.grid },
             h(Field, { label: '每次擲骰機率（0~1）', hint: '例：0.18 ＝ 每輪 18% 機率開口' }, h(Num, { value: nudgeCfg.chance, min: 0, max: 1, step: 0.01, onChange: (value) => update({ nudge: { chance: value } }) })),
@@ -1019,7 +1112,7 @@ window.__ModuleLoader__.load({
         // 6. 使用者
         h(
           Card,
-          { id: sectionDomId('users'), title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
+          { id: sectionDomId('users'), order: 10, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
           (status.users || []).length === 0
             ? h('div', { style: S.hint }, '還沒有人傳訊息給 bot。')
             : h('table', { style: S.table },
@@ -1055,7 +1148,7 @@ window.__ModuleLoader__.load({
         // 7. 進階設定
         h(
           Card,
-          { id: sectionDomId('advanced'), title: '進階設定', desc: '通常不用改；出問題時可從這裡調整。' },
+          { id: sectionDomId('advanced'), order: 11, title: '進階設定', desc: '通常不用改；出問題時可從這裡調整。' },
           h('div', { style: S.grid },
             h(Field, { label: 'Webhook 連接埠', hint: '改完按儲存；伺服器會自動重啟。' }, h(Num, { value: server.port, min: 1024, max: 65535, onChange: (value) => update({ server: { port: value } }) })),
             h(Field, { label: '每位使用者獨立工作資料夾', hint: '開啟＝每個 LINE 使用者有自己的 cwd（檔案、AGENTS.md、工作區記憶互不相通）' },
