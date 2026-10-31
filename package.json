@@ -1,6 +1,6 @@
 {
   "name": "dsh-line-bot",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "把 LINE 官方帳號（Messaging API）接進 DeepSeek Harness 的插件：內建 Cloudflare Tunnel、人設選擇（大肥魚或插件自訂）、主動傳訊與完整設定面板。",
   "type": "module",
   "main": "index.js",
