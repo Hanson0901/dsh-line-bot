@@ -101,6 +101,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
 | Proactive messages | Toggle, probability, interval, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics |
 | Users | The DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
+| Groups | Per-group session, workspace folder, persona, message count; reply chance when not addressed; always reply on @ / quote; clear group memory |
 | Advanced | Port, Agent provider/model/effort/cwd/timeout, one workspace per user (and its root), welcome/error/empty replies, logs, reload host modules (dev) |
 
 ## Configuration files
@@ -133,6 +134,15 @@ The "Model & provider" card chooses the provider/model used for LINE replies:
 - **dafeiyu (optional)**: when `dsh-persona-dafeiyu` is installed, the panel lists its personas (built-in + your own); LINE selects them per session, without changing other GUI conversations. It must be in `session` mode; the panel tells you and offers a one-click switch.
 - **Plugin custom personas**: no persona plugin required. In "Reply persona → Custom personas" you can add/edit/delete them; data lives in `<DSH_HOME>/line-bot/personas.json` (0600). When a custom persona is selected, the plugin asks dafeiyu to opt out in that session (if it is installed), then injects the custom persona into that agent's system prompt.
 - Both kinds appear in the same dropdown. The same applies when a user switches with a LINE command (`人設`, `人設 2`, `人設 <name>`).
+
+## Groups and multi-user chats
+
+When the bot is added to a group (or a multi-user room):
+
+- **Being @-mentioned always triggers a reply**, and **quoting any message always triggers a reply**; any other message is answered only when a dice roll against the *group reply chance* (default 15%) succeeds, otherwise it stays quiet.
+- Each group gets its own **DSH session, workspace folder, persona and personal memory**, separate from direct chats and other groups.
+- The `persona` command works in groups too; the panel's **Groups** card lets you tune the reply chance, toggles, per-group persona and clear a group's memory.
+- Proactive messages and DeepSeek balance reminders still target direct chats only.
 
 ## Per-user memory and personas
 

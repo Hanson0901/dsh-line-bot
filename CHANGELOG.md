@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- 支援群組與多人聊天室：被 @ 或引用（回覆某則訊息）一定回，其餘訊息依「群組回覆機率」擲骰（預設 15%）。
+- 每個群組有自己的 DSH session、工作資料夾、人設與個人記憶；面板新增「群組」卡（回覆機率、開關、群組人設、清空記憶）。
+- 狀態與個人記憶清單會列出群組；新增 `group-persona`／`group-reset` 動作。
+
 ## 0.5.6
 
 - 安裝 CLI 會偵測搭配外掛（`dsh-persona-dafeiyu`、`dsh-meme`、`dsh-tieba-dive`），可互動詢問或 `--with-companions` 一起安裝；`status` 也會顯示安裝狀態。

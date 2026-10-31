@@ -23,6 +23,7 @@ window.__ModuleLoader__.load({
       { key: 'nudge', label: '主動傳訊' },
       { key: 'meme', label: '表情包' },
       { key: 'users', label: '使用者' },
+      { key: 'group', label: '群組' },
       { key: 'advanced', label: '進階／日誌' },
     ]
     const sectionDomId = (key) => `${SECTION_ID}-sec-${key}`
@@ -337,6 +338,9 @@ window.__ModuleLoader__.load({
       'nudge-test': '主動傳訊試跑',
       'agent-test': '測試 Agent 回覆',
       'user-reset': '重設使用者',
+      'user-persona': '設定使用者人設',
+      'group-persona': '設定群組人設',
+      'group-reset': '重設群組',
       'logs-clear': '清除日誌',
       setup: '一鍵上線',
     }
@@ -660,6 +664,8 @@ window.__ModuleLoader__.load({
       const nudgeCfg = cfg.nudge || {}
       const syncCfg = cfg.sync || {}
       const balanceCfg = cfg.balance || {}
+      const groupCfg = cfg.group || {}
+      const groupList = status.groups || []
       const memeCfg = cfg.stickers || {}
       const memeStatus = status.meme || {}
       const memeSample = Array.isArray(memeStatus.sample) ? memeStatus.sample : []
@@ -1199,6 +1205,49 @@ window.__ModuleLoader__.load({
                         tone: 'danger',
                       }, '清空記憶'))),
                   )))),
+        ),
+
+        // 6.5 群組
+        h(
+          Card,
+          { id: sectionDomId('group'), order: 12, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶。' },
+          h('div', { style: S.grid },
+            h(Field, { label: '沒被點名時的回覆機率（%）', hint: '每則群組訊息用這個機率決定要不要回；0 就只在被 @ 或引用時回' },
+              h(Num, { value: Math.round((Number(groupCfg.replyChance) || 0) * 100), min: 0, max: 100, step: 1, onChange: (value) => update({ group: { replyChance: value / 100 } }) })),
+          ),
+          h('div', { style: S.row },
+            h(Toggle, { checked: groupCfg.enabled !== false, onChange: (value) => update({ group: { enabled: value } }), label: '在群組裡運作', hint: '關掉後群組訊息完全不回' }),
+            h(Toggle, { checked: groupCfg.replyToMentions !== false, onChange: (value) => update({ group: { replyToMentions: value } }), label: '被 @ 一定回' }),
+            h(Toggle, { checked: groupCfg.replyToQuotes !== false, onChange: (value) => update({ group: { replyToQuotes: value } }), label: '被引用一定回' }),
+          ),
+          groupList.length === 0
+            ? h('div', { style: S.hint }, '還沒被加入任何群組，或群組還沒傳過訊息。')
+            : h('table', { style: S.table },
+                h('thead', null, h('tr', null, h('th', { style: S.th }, '群組'), h('th', { style: S.th }, 'session／資料夾'), h('th', { style: S.th }, '訊息'), h('th', { style: S.th }, '人設'), h('th', { style: S.th }, '上次互動'), h('th', { style: S.th }, ''))),
+                h('tbody', null, groupList.map((group) =>
+                  h('tr', { key: group.groupId },
+                    h('td', { style: S.td }, h('div', null, group.displayName || '（未命名群組）'), h('div', { style: { ...S.hint, ...S.mono } }, group.groupId)),
+                    h('td', { style: { ...S.td, ...S.mono } }, group.sessionId || '—', group.workspaceDir ? h('div', { style: { ...S.hint, ...S.mono, wordBreak: 'break-all' } }, group.workspaceDir) : null),
+                    h('td', { style: S.td }, String(group.messages ?? 0)),
+                    h('td', { style: S.td },
+                      h('select', {
+                        value: group.personaId || personaCfg.id || 'dafeiyu',
+                        onChange: (event) => act('group-persona', { groupId: group.groupId, personaId: event.target.value }),
+                        style: { ...S.input, padding: '3px 6px', fontSize: 12 },
+                        disabled: !!busy,
+                      },
+                        (personaCatalog.length ? personaCatalog : [{ id: group.personaId, name: group.personaName || group.personaId }]).map((item) =>
+                          h('option', { key: item.id, value: item.id }, `${item.name}${item.source === 'local' ? '（自訂）' : ''}`)))),
+                    h('td', { style: S.td }, fmtTime(group.lastAt)),
+                    h('td', { style: S.td }, h(Btn, {
+                      onClick: () => {
+                        if (typeof window !== 'undefined' && !window.confirm('這會清空這個群組自己的 session 與工作資料夾（記憶、檔案），確定？')) return
+                        act('group-reset', { groupId: group.groupId, wipeWorkspace: true })
+                      },
+                      disabled: !!busy,
+                      tone: 'danger',
+                    }, '清空記憶'))),
+                  ))),
         ),
 
         // 7. 進階設定
