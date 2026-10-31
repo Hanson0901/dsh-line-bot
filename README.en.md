@@ -98,7 +98,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Jokes | Text joke library: built-in seeds, Tieba quotes, wanjiqi barrage memes; per-source toggles, per-turn injection count, add/delete entries |
 | Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
 | Memes | Reply with images/stickers from the dsh-meme library, enable/disable, image limit, and sample previews |
-| Sticker vision | Fetch incoming LINE stickers and show them to the model (can be disabled) |
+| Sticker & image vision | Fetch incoming LINE stickers or images and show them to the model; when the model cannot read images, describe them with modlens or a vision model (can be disabled) |
 | DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
 | Proactive messages | Toggle, probability, interval, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics |
 | Users | The DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
@@ -220,7 +220,8 @@ The persona can attach a sticker to a text reply, or reply with just an image. I
 - Each turn injects a numbered sample of the library into context; when the persona wants a picture, it appends `[[meme:#N]]` (or a caption) at the end of its reply, and the plugin turns that into a LINE image message.
 - Images are served to LINE through the current Cloudflare public URL (`<url>/media/<token>`), and the URL follows quick-tunnel restarts automatically.
 - The panel's "Memes" card can disable the feature, limit images per reply (1–3), and preview library samples. To add or re-tag images, use dsh-meme's own settings.
-- When a LINE sticker arrives, the bot fetches the sticker image and shows it to the model (vision-capable models read the image; otherwise the bot falls back to the keywords LINE provides), so the persona can react to the mood. Turn "Understand stickers" off in the LINE credentials card to use keywords only.
+- When a LINE sticker arrives, the bot fetches the image and shows it to the model; vision-capable models read it directly, otherwise the bot asks modlens, then tries another vision model, and only then falls back to the keywords LINE provides. Turn "Understand stickers" off in the LINE credentials card to use keywords only.
+- Regular images work the same way: the bot downloads them through LINE's content API and attaches them to the message; if the model cannot read images, the same modlens / vision-model description path is used. Turn "Understand images" off in the LINE credentials card to skip them.
 - Without dsh-meme installed, the feature stays off and replies are text only.
 ## Diagnostics
 - Panel → Advanced → Run diagnostics checks the server, tunnel, public URL, webhook, dsh-meme library, image converters, model, and recent errors; Safe repair only reconnects the tunnel and re-applies the webhook.

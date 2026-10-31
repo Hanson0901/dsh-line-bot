@@ -25,11 +25,12 @@ npx dsh-line-bot doctor --fix   # 安全修復：重連 tunnel、重設 webhook
 - 用面板「測試 Agent 回覆」或 `meme-preview` 確認模型有輸出標記。
 
 ### 回覆裡出現 `[[meme:…]]` 或 `<meme#18>`
-- 舊版不認得標記格式；升級到 0.6.1 以上（目前 0.8.x）。
+- 舊版不認得標記格式；升級到 0.6.1 以上（目前 0.9.x）。
 
-### 貼圖看不懂
-- 需要模型支援圖片（`inputModalities` 含 `image`）。面板「模型與接口來源」可換模型。
-- 模型不支援時仍會用貼圖關鍵字，不會壞掉。
+### 貼圖／圖片看不懂
+- 模型支援圖片（`inputModalities` 含 `image`）時會直接看圖；面板「模型與接口來源」可換模型。
+- 模型不支援時，插件會先用 modlens 描述，再改用另一個視覺模型，最後才退回貼圖關鍵字。
+- modlens 可在「進階 → 診斷」看 `vision` check；失敗通常是 provider 額度或 503。一般圖片可在面板「LINE 憑證」關閉「看得懂一般圖片」。
 
 ### APNG 不會動
 - LINE 不播放 APNG，只顯示第一幀。保持 `stickers.apng=false` 即可。

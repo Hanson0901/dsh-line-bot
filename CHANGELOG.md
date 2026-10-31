@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2
+
+- LINE 一般圖片：收到 `image` 訊息時透過 LINE content API 下載，模型支援圖片就直接附圖；不支援時改用 modlens 或另一個視覺模型描述。
+- 貼圖：模型不吃圖時，先用 modlens 看圖，失敗再改用支援圖片的模型描述，最後才退回貼圖關鍵字。
+- 面板「LINE 憑證」新增「看得懂一般圖片」開關與目前看圖方式說明。
+- 診斷（doctor）新增「看圖能力（modlens）」檢查。
+
 ## 0.9.1
 - 貼吧學習同步的目標下拉現在也包含「插件自訂人設」（`local:`）；選自訂人設時會寫入 `<DSH_HOME>/line-bot/persona-overlays/<id>.md` 覆蓋層，每輪注入。
 - 讀不到大肥魚 HTTP bridge 時，改成直接讀取 `<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json` 並列出內建人設，不再讓同步目標變空。

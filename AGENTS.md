@@ -8,7 +8,7 @@
 node bin/cli.mjs doctor --json      # 或 npx dsh-line-bot doctor --json
 ```
 
-- 伺服器在跑時，doctor 會打本機 `http://127.0.0.1:8791/doctor`，檢查：伺服器、Cloudflare Tunnel、公開網址健康、LINE webhook、dsh-meme 圖庫、表情包設定、轉圖工具、模型、圖片可送達測試、最近錯誤。
+- 伺服器在跑時，doctor 會打本機 `http://127.0.0.1:8791/doctor`，檢查：伺服器、Cloudflare Tunnel、公開網址健康、LINE webhook、dsh-meme 圖庫、表情包設定、轉圖工具、模型、modlens 看圖能力、圖片可送達測試、最近錯誤。
 - 伺服器沒跑時會退成離線檢查（設定檔、憑證、dsh-meme、轉圖工具、日誌）。
 - `--fix` 會做安全修復：重啟 tunnel、重設 webhook、重新讀 bot 資訊；不會改設定、不會刪資料。
 
@@ -25,8 +25,8 @@ curl -s http://127.0.0.1:8791/health
 | --- | --- | --- | --- |
 | 完全沒回覆 | `server`、`tunnel`、`webhook` | webhook 指到舊 tunnel；LINE「Use webhook」沒開；伺服器沒啟動 | `doctor --fix`；面板「套用 Webhook」；到 LINE console 開 Use webhook |
 | 有回文字但沒圖片 | `dsh-meme`、`meme-config`、`public-url`、`media`、`converters` | 沒裝 dsh-meme；`stickers.enabled=false`；公開網址還沒就緒；GIF/webp 沒有轉圖工具 | 面板「表情包」開啟並看圖庫；`doctor --fix`；安裝 ffmpeg |
-| 回覆出現 `[[meme:…]]`、`<meme#18>` 文字 | 版本 | 舊版不認得標記格式 | 升級到 0.6.1+（目前 0.8.x） |
-| 貼圖看不懂 | `model` | 目前模型不吃圖（`inputModalities` 沒有 image） | 面板「模型與接口來源」換成有 `text+image` 的模型 |
+| 回覆出現 `[[meme:…]]`、`<meme#18>` 文字 | 版本 | 舊版不認得標記格式 | 升級到 0.6.1+（目前 0.9.x） |
+| 貼圖／圖片看不懂 | `model`、`vision` | 模型不吃圖，或 modlens 不可用／失敗 | 面板「模型與接口來源」換成有 `text+image` 的模型；或安裝 modlens 並設定 provider |
 | 群組不回 | 面板「群組」 | 沒被 @／引用、擲骰沒中、群組功能關閉 | 看面板回覆機率與開關 |
 | 主動訊息沒出現 | 面板「主動傳訊」 | 機率、每日／每月上限、靜音時段、冷卻、沒有 session 的使用者 | 看 `status.nudge` 與日誌 |
 | 餘額提醒沒出現 | `balance` | provider 不是 `deepseek-account`、餘額高於門檻、冷卻中、靜音 | 面板「DeepSeek 餘額」看 `applicable`、`lastAskAt` |
