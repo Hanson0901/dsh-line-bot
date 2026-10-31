@@ -891,6 +891,7 @@ window.__ModuleLoader__.load({
           ),
           h(Toggle, { checked: line.useAutoToken !== false, onChange: (value) => update({ line: { useAutoToken: value } }), label: '自動簽發 access token', hint: '有 Channel ID＋Secret 時，優先自動取得（建議開啟）' }),
           h(Toggle, { checked: line.loadingEnabled !== false, onChange: (value) => update({ line: { loadingEnabled: value } }), label: '顯示「正在輸入」動畫', hint: '回覆前呼叫 LINE 的 loading 動畫' }),
+          h(Toggle, { checked: line.stickerVision !== false, onChange: (value) => update({ line: { stickerVision: value } }), label: '看得懂貼圖', hint: '收到貼圖時抓圖片給模型看；模型不支援圖片時仍會用貼圖關鍵字' }),
           h('div', { style: S.row },
             h(Btn, { onClick: () => act('line-verify'), disabled: !!busy, tone: 'primary' }, busy === 'line-verify' ? '驗證中…' : '驗證並讀取 bot 資訊'),
             h(Btn, { onClick: () => act('token-refresh'), disabled: !!busy }, '重新簽發 token'),
