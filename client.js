@@ -759,7 +759,7 @@ window.__ModuleLoader__.load({
       const selectedPersona = personaCatalog.find((item) => item.id === personaCfg.id) || null
       const selectedName = selectedPersona?.name || personaCfg.id || '大肥魚'
       const selectedIsLocal = String(personaCfg.id || '').startsWith('local:')
-      const syncPersonaOptions = personaOptions.slice()
+      const syncPersonaOptions = personaCatalog.slice()
       const syncTarget = syncCfg.targetPersonaId || (syncPersonaOptions[0] && syncPersonaOptions[0].id) || ''
       const bot = status.line?.bot || null
       const webhook = status.line?.webhook || null
@@ -1077,7 +1077,7 @@ window.__ModuleLoader__.load({
                 onChange: (event) => update({ agent: { model: event.target.value } }),
               }),
               h('datalist', { id: 'line-bot-model-options' },
-                ((modelProviders.find((item) => item.id === (draft.agent.provider || agentStatus.defaultProvider)) || {}).models || []).map((item) => h('option', { key: item.id, value: item.id }, item.name))),
+                ((modelProviders.find((item) => item.id === (draft.agent.provider || agentStatus.defaultProvider)) || {}).models || []).map((item) => h('option', { key: item.id, value: item.id }, item.name + (String(item.id).startsWith('local:') ? '（插件自訂）' : (item.builtin ? '（內建）' : ''))))),
             ),
             h(Field, { label: '推理強度（選填）', hint: '留空＝跟隨 provider 預設' },
               h(Text, { value: draft.agent.reasoningEffort || '', onChange: (value) => update({ agent: { reasoningEffort: value } }), placeholder: 'max / high / medium' })),
@@ -1160,7 +1160,7 @@ window.__ModuleLoader__.load({
           { id: sectionDomId('sync'), order: 6, title: '貼吧學習同步', desc: '把「刷貼吧」每天演化學到的語氣樣本，寫進上方人設。自訂人設會直接改人設本文；內建人設（大肥魚、阿茶、听澜）不能改原文，會寫進插件自己的覆蓋層，每輪注入、不用重載。' },
           h(Toggle, { checked: syncCfg.enabled !== false, onChange: (value) => update({ sync: { enabled: value } }), label: '開啟自動同步', hint: '每小時檢查一次；貼吧人設版本有變才寫入（寫入前會備份 personas.json）' }),
           h('div', { style: S.grid },
-            h(Field, { label: '同步到哪個人設', hint: '內建人設使用覆蓋層；自訂人設直接改本文' },
+            h(Field, { label: '同步到哪個人設', hint: '內建人設與插件自訂人設使用覆蓋層；大肥魚的自訂人設直接改本文' },
               h('select', { value: syncTarget, onChange: (event) => update({ sync: { targetPersonaId: event.target.value } }), style: S.input },
                 syncPersonaOptions.length
                   ? syncPersonaOptions.map((item) => h('option', { key: item.id, value: item.id }, item.name))
