@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.2
+- 送出的圖片改存到 `<DSH_HOME>/line-bot/media/`（含索引，保留 90 天），不再只放記憶體、不再 1 小時過期；LINE 之後才打開聊天室也能抓到。
+- 圖片回應改 `cache-control: public, max-age=31536000, immutable`，讓 LINE／CDN 快取。
+- 注意：quick tunnel 重啟會換網址，舊訊息裡的圖片仍會失效；要永久固定請用 API Token 隧道＋自訂網域。
+
 ## 0.8.1
 - LINE 代理會濾掉 dsh-meme 外掛的「陪伴模式」提示詞（`dsh-expression:companion`）：那套規則叫模型用 `send_meme`／`[表情:]`，在 LINE 沒有對應的配圖器，會和本外掛的標記打架。
 - 表情包提示詞收緊：清單加上情緒與編號、只准 `[[meme:#N]]`、不要呼叫 `send_meme`、不要把標記解釋成文字。

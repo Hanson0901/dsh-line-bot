@@ -199,6 +199,9 @@ The character keeps its own memory at `<DSH_HOME>/line-bot/memories.json`, separ
 - The "Personal memory" panel card shows what it remembers, lets you delete entries, prune expired ones, or trigger a review right away.
 ## Memes (dsh-meme)
 
+- Sent images are copied to `<DSH_HOME>/line-bot/media/` and kept for 90 days, so LINE can still fetch them when the chat is opened later. With a quick tunnel the public URL changes on restart and older images stop loading; use a named tunnel (API token + your own hostname) for permanent URLs.
+
+
 The persona can attach a sticker to a text reply, or reply with just an image. Images come from the installed dsh-meme plugin's library (the built-in "大肥鱼" pack has 24 images):
 
 - Each turn injects a numbered sample of the library into context; when the persona wants a picture, it appends `[[meme:#N]]` (or a caption) at the end of its reply, and the plugin turns that into a LINE image message.
