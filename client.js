@@ -1187,7 +1187,7 @@ window.__ModuleLoader__.load({
         // 4c. 玩梗
         h(
           Card,
-          { id: sectionDomId('jokes'), order: 7, title: '玩梗', desc: '文字梗：內建種子、刷貼吧高讚回覆、或 wanjiqi-meme 彈幕梗。角色每輪只會看到幾條，一次最多用一個；三個來源可以個別開關。' },
+          { id: sectionDomId('jokes'), order: 7, title: '玩梗', desc: '文字梗：內建種子、刷貼吧高讚回覆、或 wanjiqi-meme 彈幕梗。角色每輪只會看到幾條，一次回覆最多用幾個可以調；三個來源可以個別開關。' },
           h('div', { style: S.row },
             h(Badge, { ok: jokesStatus.enabled !== false }, '共 ' + (jokesStatus.total || 0) + ' 則'),
             h(Badge, { ok: jokesCfg.tieba !== false }, '貼吧金句'),
@@ -1207,6 +1207,9 @@ window.__ModuleLoader__.load({
             h(Btn, { onClick: importWanjiqiJokes, disabled: !!busy }, busy === 'joke-import-wanjiqi' ? '下載中…' : '匯入 wanjiqi 梗庫'),
             h(Btn, { onClick: addTiebaBars, disabled: !!busy }, busy === 'tieba-bars-add' ? '加入中…' : '加入梗類貼吧（刷貼吧）'),
           ),
+          (jokesStatus.bySource || {}).tieba === 0
+            ? h('div', { style: S.note }, '貼吧金句目前 0 則：梗類貼吧（弱智吧、抽象吧、搞笑吧、梗吧）已加入刷貼吧，等它跑過一輪後再按「匯入貼吧金句」。')
+            : null,
           h('div', { style: S.grid },
             h(Field, { label: '新增一個梗' }, h('input', { value: jokeDraft.text, onChange: (event) => setJokeDraft({ ...jokeDraft, text: event.target.value }), placeholder: '例：這波啊，這波是⋯', style: S.input })),
             h(Field, { label: '用法（可選）' }, h('input', { value: jokeDraft.usage, onChange: (event) => setJokeDraft({ ...jokeDraft, usage: event.target.value }), placeholder: '什麼時候用', style: S.input })),
