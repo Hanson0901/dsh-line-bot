@@ -94,7 +94,8 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Cloudflare Tunnel | quick / API token modes, token, hostname, tunnel name, Account/Zone ID, download cloudflared, start/stop, auto-configure webhook, bring your own public URL |
 | Model & provider | Pick the provider/model and reasoning effort for LINE replies; disables DeepSeek balance when the provider is not deepseek-account |
 | Reply persona | Choose a persona (dafeiyu or a plugin custom one), add/edit/delete custom personas, copy the current persona into a custom one, enforce, allow users to switch personas, switch dafeiyu to session mode, test an Agent reply |
-| Tieba learning sync | Writes the tone samples learned while browsing Tieba back into the persona's "Tieba tone" section, preview diff, sync now |
+| Tieba learning sync | Writes Tieba tone samples into the persona (built-ins use an overlay), preview diff, sync now |
+| Jokes | Text joke library: built-in seeds, Tieba quotes, wanjiqi barrage memes; per-source toggles, per-turn injection count, add/delete entries |
 | Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
 | Memes | Reply with images/stickers from the dsh-meme library, enable/disable, image limit, and sample previews |
 | Sticker vision | Fetch incoming LINE stickers and show them to the model (can be disabled) |
@@ -160,7 +161,7 @@ When the bot is added to a group (or a multi-user room):
 
 The "dive into Tieba" plugin evolves its own tone at most once a day (stored in `<DSH_HOME>/tieba-duty/persona.json`), and that is a separate system from the dafeiyu persona LINE uses (`<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json`). This plugin can bridge them:
 
-- In the panel, "Reply persona → Tieba learning sync" lets you set the toggle, the target persona (any dafeiyu persona, including built-ins; off by default). Built-in personas cannot be edited in place, so their learning goes to `<DSH_HOME>/line-bot/persona-overlays/<id>.md` and is injected every turn without reloading; custom personas are edited directly., the check interval (default 60 minutes), whether to sync personality numbers, and whether to reload the dafeiyu plugin after writing. This feature requires the dafeiyu plugin.
+- In the panel, "Reply persona → Tieba learning sync" lets you set the toggle, the target persona (any dafeiyu persona, including built-ins), the check interval (default 60 minutes), whether to sync personality numbers, and whether to reload the dafeiyu plugin after writing. Built-in personas cannot be edited in place, so their learning goes to `<DSH_HOME>/line-bot/persona-overlays/<id>.md` and is injected every turn without reloading; custom personas are edited directly.
 - Each check compares the Tieba persona version; it only acts on a new version. It replaces only the `## 貼吧學來的口氣` section of the target persona text (appending it if missing) and never overwrites other hand-written content; the personality numbers (gentle / sharp / abstract / talkative / image bias) can be updated too.
 - Before writing it backs up to `<DSH_HOME>/line-bot/persona-backups/personas-<time>.json`.
 - After writing it restarts `dsh-persona-dafeiyu` through the Cordis loader so it re-reads the store; a failed restart is only a warning — the text is already written and takes effect on the next plugin reload.
