@@ -56,6 +56,25 @@ dsh plugin --profile desktop add dsh-line-bot
 >
 > 소스에서 설치하려면 `git clone https://github.com/Hanson0901/dsh-line-bot.git` 후 DSH 패널의 "bundle 설치"에서 그 폴더를 선택하거나 `dsh plugin --profile desktop add /path/to/dsh-line-bot`을 실행합니다.
 
+## 함께 쓰는 플러그인 (선택)
+
+LINE Bot은 단독으로도 동작하며, 아래 플러그인을 설치하면 기능이 늘어납니다:
+
+| 플러그인 | 추가 기능 | 권장 |
+| --- | --- | --- |
+| `dsh-persona-dafeiyu` | 페르소나 목록, 톄바 동기화 | 권장 |
+| `dsh-meme` | 이미지/스티커 답장 | 권장 |
+| `dsh-tieba-dive` | 톄바 학습 동기화 소스 | 선택 |
+
+설치 CLI는 없는 것을 감지해 함께 설치할지 물어봅니다:
+
+```bash
+npx dsh-line-bot install --with-companions
+npx dsh-line-bot install --no-companions
+```
+
+없을 때: 대비어 없음 → 플러그인 자체 페르소나만, dsh-meme 없음 → 텍스트만, 톄바 플러그인 없음 → 톄바 동기화 꺼짐.
+
 ## 첫 구동(5단계)
 
 1. **자격 증명 준비**: [LINE Official Account Manager](https://manager.line.biz/)에서 공식 계정 생성 → [LINE Developers Console](https://developers.line.biz/console/)에서 Messaging API 채널 생성(또는 선택) → "Messaging API" 탭에서 **Use webhook** 켜기 → **Channel ID**와 **Channel secret** 복사.

@@ -56,6 +56,25 @@ Then add `dsh-line-bot` to the `dsh.profile.bundles` array in `~/.dsh/profiles/d
 >
 > Or from source: `git clone https://github.com/Hanson0901/dsh-line-bot.git`, then choose that folder in the DSH panel's "Install bundle", or run `dsh plugin --profile desktop add /path/to/dsh-line-bot`.
 
+## Companion plugins (optional)
+
+The bot works on its own; these plugins add capabilities:
+
+| Plugin | What it adds | Recommended |
+| --- | --- | --- |
+| `dsh-persona-dafeiyu` | Persona catalog and Tieba sync | Yes |
+| `dsh-meme` | Image/sticker replies | Yes |
+| `dsh-tieba-dive` | Source of Tieba learning sync | Optional |
+
+The install CLI detects what is missing and offers to install it:
+
+```bash
+npx dsh-line-bot install --with-companions
+npx dsh-line-bot install --no-companions
+```
+
+Without them: no dafeiyu means only plugin-local personas; no dsh-meme means text-only replies; no dsh-tieba-dive means Tieba sync stays off.
+
 ## First run (5 steps)
 
 1. **Create / obtain credentials**: go to [LINE Official Account Manager](https://manager.line.biz/) and create an Official Account → [LINE Developers Console](https://developers.line.biz/console/) and create (or pick) a Messaging API channel → open the **Use webhook** toggle on the "Messaging API" tab → copy the **Channel ID** and **Channel secret**.

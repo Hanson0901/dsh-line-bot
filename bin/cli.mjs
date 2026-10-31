@@ -16,12 +16,20 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import readline from 'node:readline/promises'
 
 const IS_WIN = process.platform === 'win32'
 import { fileURLToPath } from 'node:url'
 
 const PKG = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const NAME = PKG.name || 'dsh-line-bot'
+
+// 搭配的外掛：不裝也能用，但少掉某些功能。安裝時會偵測並詢問是否一起裝。
+const COMPANIONS = [
+  { name: 'dsh-persona-dafeiyu', label: '大肥魚人設', hint: '人設清單、貼吧同步（建議）' },
+  { name: 'dsh-meme', label: '表情包圖庫', hint: '讓角色回圖片／貼圖（建議）' },
+  { name: 'dsh-tieba-dive', label: '刷貼吧', hint: '貼吧學習同步的來源（可選）' },
+]
 
 function out(line = '') {
   process.stdout.write(`${line}\n`)
@@ -32,7 +40,7 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-  const options = { command: '', profile: '', version: '', spec: '', dryRun: false, enable: true }
+  const options = { command: '', profile: '', version: '', spec: '', dryRun: false, enable: true, companions: 'ask' }
   const rest = [...argv]
   options.command = (rest.shift() || 'help').toLowerCase()
   for (let index = 0; index < rest.length; index += 1) {
@@ -56,6 +64,10 @@ function parseArgs(argv) {
       options.spec = arg.slice('--spec='.length)
     } else if (arg === '--no-enable') {
       options.enable = false
+    } else if (arg === '--with-companions') {
+      options.companions = 'yes'
+    } else if (arg === '--no-companions') {
+      options.companions = 'no'
     } else if (arg === '--help' || arg === '-h') {
       options.command = 'help'
     } else {
@@ -125,12 +137,12 @@ function bundlesOf(manifest) {
   return Array.isArray(bundles) ? [...bundles] : []
 }
 
-function withBundle(manifest, enabled) {
+function withBundle(manifest, enabled, name = NAME) {
   const bundles = bundlesOf(manifest)
   if (enabled) {
-    if (!bundles.includes(NAME)) bundles.push(NAME)
+    if (!bundles.includes(name)) bundles.push(name)
   } else {
-    const index = bundles.indexOf(NAME)
+    const index = bundles.indexOf(name)
     if (index >= 0) bundles.splice(index, 1)
   }
   return {
@@ -218,7 +230,66 @@ function runInstall(profile, versionSpec, { dryRun }) {
   }
 }
 
-function commandInstall(options) {
+function companionMissing(profile, dir, manifest, name) {
+  const deps = { ...(manifest.dependencies || {}), ...(manifest.devDependencies || {}) }
+  if (deps[name]) return false
+  if (bundlesOf(manifest).includes(name)) return false
+  return !fs.existsSync(path.join(dir, 'node_modules', name, 'package.json'))
+}
+
+async function askYesNo(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    const answer = (await rl.question(question)).trim().toLowerCase()
+    return answer === '' || answer === 'y' || answer === 'yes' || answer === '是'
+  } finally {
+    rl.close()
+  }
+}
+
+function installCompanion(profile, name, options) {
+  runInstall(profile, `${name}@latest`, options)
+  if (options.dryRun) return
+  const { file } = readManifest(profile)
+  const current = readManifest(profile).manifest
+  const next = withBundle(current, true, name)
+  if (JSON.stringify(next) !== JSON.stringify(current)) {
+    writeManifestAtomic(file, next)
+    out(`✔ 已啟用 ${name}`)
+  }
+}
+
+async function setupCompanions(profile, options) {
+  const { dir, manifest } = readManifest(profile)
+  const missing = COMPANIONS.filter((item) => companionMissing(profile, dir, manifest, item.name))
+  if (missing.length === 0) {
+    out('• 搭配外掛都已安裝。')
+    return
+  }
+  out('')
+  out('搭配外掛（可選，不裝也能用）：')
+  for (const item of missing) out(`  • ${item.name} — ${item.label}：${item.hint}`)
+  if (options.dryRun) {
+    out(`→ 會詢問是否一起安裝 ${missing.map((item) => item.name).join('、')}`)
+    return
+  }
+  let install = false
+  if (options.companions === 'yes') install = true
+  else if (options.companions === 'no') install = false
+  else if (process.stdin.isTTY) install = await askYesNo('要一起安裝嗎？(Y/n) ')
+  else {
+    out('• 目前不是互動終端，略過搭配外掛；可加 --with-companions 一起安裝。')
+    return
+  }
+  if (!install) {
+    out('• 略過搭配外掛。之後可再跑 npx dsh-line-bot install --with-companions。')
+    return
+  }
+  for (const item of missing) installCompanion(profile, item.name, options)
+  out('✔ 搭配外掛安裝完成。')
+}
+
+async function commandInstall(options) {
   const profile = pickProfile(options.profile)
   const { dir, file, manifest } = readManifest(profile)
   const versionSpec = options.spec || (options.version ? `${NAME}@${options.version}` : `${NAME}@${PKG.version}`)
@@ -244,6 +315,8 @@ function commandInstall(options) {
       out('• bundle 已經在啟用清單裡，略過。')
     }
   }
+
+  await setupCompanions(profile, options)
 
   out('')
   out('完成。下一步：')
@@ -295,6 +368,11 @@ function commandStatus(options) {
   out(`profile：${profile}（${dir}）`)
   out(`依賴：${dependency || '（未安裝）'}`)
   out(`bundle 啟用：${enabled ? '是' : '否'}`)
+  const companions = COMPANIONS.map((item) => {
+    const ok = !companionMissing(profile, dir, manifest, item.name)
+    return `${item.name}${ok ? '（已安裝）' : '（未安裝）'}`
+  })
+  out(`搭配外掛：${companions.join('、')}`)
   if (fs.existsSync(path.join(dshHome(), 'line-bot', 'config.json'))) {
     out('設定檔：<DSH_HOME>/line-bot/config.json（已存在）')
   }
@@ -314,6 +392,8 @@ function commandHelp() {
   out('  --version, -v <版本>   指定要安裝的版本（預設跟這個 CLI 相同）')
   out('  --spec <pnpm 規格>     直接指定套件規格，例如 github:Hanson0901/dsh-line-bot')
   out('  --no-enable            只安裝套件，不寫入 bundle 清單')
+  out('  --with-companions      一起安裝搭配外掛（dsh-persona-dafeiyu、dsh-meme、dsh-tieba-dive）')
+  out('  --no-companions        不詢問搭配外掛')
   out('  --dry-run, -n          只顯示會做什麼，不寫入')
   out('  --help, -h             顯示這段說明')
   out('')
@@ -324,7 +404,7 @@ const options = parseArgs(process.argv.slice(2))
 switch (options.command) {
   case 'install':
   case 'add':
-    commandInstall(options)
+    await commandInstall(options)
     break
   case 'uninstall':
   case 'remove':

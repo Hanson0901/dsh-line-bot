@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.6
+
+- 安裝 CLI 會偵測搭配外掛（`dsh-persona-dafeiyu`、`dsh-meme`、`dsh-tieba-dive`），可互動詢問或 `--with-companions` 一起安裝；`status` 也會顯示安裝狀態。
+- README（五語言）新增「搭配外掛」章節。
+
 ## 0.5.5
 
 - 收到 LINE 貼圖時抓取貼圖圖片，透過 DSH 附件服務交給模型閱讀（模型不支援圖片時自動退回貼圖關鍵字）。

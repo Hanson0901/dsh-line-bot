@@ -56,6 +56,25 @@ dsh plugin --profile desktop add dsh-line-bot
 >
 > 或从源码：`git clone https://github.com/Hanson0901/dsh-line-bot.git`，在 DSH 面板「安装 bundle」选那个文件夹，或 `dsh plugin --profile desktop add /path/to/dsh-line-bot`。
 
+## 搭配插件（可选）
+
+LINE Bot 可以独立运行；装上下面这些插件会多出对应功能：
+
+| 插件 | 用途 | 建议 |
+| --- | --- | --- |
+| `dsh-persona-dafeiyu` | 人设清单、贴吧同步 | 建议 |
+| `dsh-meme` | 让角色回图片/贴图 | 建议 |
+| `dsh-tieba-dive` | 贴吧学习同步的来源 | 可选 |
+
+安装时 CLI 会检测缺哪些，并询问要不要一起安装：
+
+```bash
+npx dsh-line-bot install --with-companions
+npx dsh-line-bot install --no-companions
+```
+
+少了它们的影响：没有大肥鱼 → 人设只剩插件自定义的；没有 dsh-meme → 只能回文字；没有刷贴吧 → 贴吧同步自动停用。
+
 ## 第一次上线（5 步）
 
 1. **创建／取得凭证**：到 [LINE Official Account Manager](https://manager.line.biz/) 创建官方账号 → [LINE Developers Console](https://developers.line.biz/console/) 创建（或选用）Messaging API channel → 在「Messaging API」分页把 **Use webhook** 打开 → 复制 **Channel ID** 与 **Channel secret**。

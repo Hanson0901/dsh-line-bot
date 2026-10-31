@@ -56,6 +56,25 @@ dsh plugin --profile desktop add dsh-line-bot
 >
 > ソースからなら：`git clone https://github.com/Hanson0901/dsh-line-bot.git` して、DSH パネルの「bundle をインストール」でそのフォルダを選ぶか、`dsh plugin --profile desktop add /path/to/dsh-line-bot` を実行します。
 
+## 連携プラグイン（任意）
+
+LINE Bot は単体でも動きます。以下を入れると機能が増えます：
+
+| プラグイン | 追加される機能 | 推奨 |
+| --- | --- | --- |
+| `dsh-persona-dafeiyu` | ペルソナ一覧と貼吧同期 | 推奨 |
+| `dsh-meme` | 画像／スタンプ返信 | 推奨 |
+| `dsh-tieba-dive` | 貼吧学習同期の取得元 | 任意 |
+
+インストール CLI は不足を検出して、一緒に入れるか確認します：
+
+```bash
+npx dsh-line-bot install --with-companions
+npx dsh-line-bot install --no-companions
+```
+
+ない場合の影響：大肥魚なし → プラグイン内のペルソナのみ、dsh-meme なし → テキストのみ、貼吧プラグインなし → 貼吧同期は停止。
+
 ## 初回セットアップ（5 ステップ）
 
 1. **認証情報を用意**：[LINE Official Account Manager](https://manager.line.biz/) で公式アカウントを作成 → [LINE Developers Console](https://developers.line.biz/console/) で Messaging API チャネルを作成（または選択）→ 「Messaging API」タブで **Use webhook** をオン → **Channel ID** と **Channel secret** をコピーします。
