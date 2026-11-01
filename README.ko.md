@@ -81,7 +81,7 @@ npx dsh-line-bot install --no-companions
 2. **패널에 입력**: "LINE Bot → LINE 자격 증명"에 Channel ID와 Channel Secret을 붙여 넣고 "변경 저장" → "검증하고 bot 정보 읽기"를 누릅니다. 성공하면 bot 이름과 Basic ID가 표시됩니다.
 3. **webhook 서버 시작**: "개요"에서 "모두 시작"을 누르거나 "시작"을 눌러 webhook 서버와 터널을 함께 올립니다(기본값은 자동 시작).
 4. **터널 열기**: Quick tunnel은 "터널 시작"만 누르면 됩니다. 고정 URL이 필요하면 "Cloudflare Tunnel"에서 API 토큰을 붙여 넣고 → "API 토큰 검증" → "터널과 DNS 생성／업데이트"(토큰 권한: Account → Cloudflare Tunnel → Edit, Zone → DNS → Edit, Zone → Zone → Read). quick tunnel은 재시작할 때마다 URL이 바뀌며(플러그인이 새 URL을 LINE webhook에 자동으로 다시 씁니다), 이름 있는 터널의 URL은 고정입니다.
-5. **webhook 자동 설정**: 터널이 준비되면 자동으로 LINE에 PUT합니다. 실패하면 "터널 URL을 webhook에 적용" → "webhook 테스트"를 누릅니다. 그다음 LINE에서 bot을 친구 추가하고 메시지를 보내면 됩니다.
+5. **webhook 자동 설정**: 터널이 준비되면 자동으로 LINE에 PUT합니다. 실패하면 "터널 URL을 webhook에 적용" → "webhook 테스트"를 누릅니다. 그다음 LINE에서 bot을 친구 추가하고 메시지를 보냅니다. 첫 메시지는 "승인 대기"로 들어가며, 패널의 "사용자"에서 자신의 userId를 승인해야 응답합니다(허용 목록은 기본적으로 비어 있습니다).
 
 ## 패널 구성
 
@@ -246,6 +246,7 @@ Bot이 그룹(또는 다인 룸)에 추가되면:
 
 ## 보안 안내
 
+- 허용 목록은 기본적으로 비어 있습니다. 모르는 사용자의 메시지는 승인 대기로만 들어가며, 세션이 만들어지거나 도구가 호출되지 않습니다. 패널의 "사용자"에서 승인해야 응답합니다.
 - 이는 DSH Agent를 공개된 LINE 계정에 연결하는 것과 같습니다. bot을 아는 사람은 당신의 컴퓨터에 있는 도구를 Agent가 사용하게 할 수 있습니다. "허용 목록 사용자 ID"에 자신의 LINE userId를 넣어 자신만 사용하도록 하는 것을 권장합니다.
 - 모든 자격 증명은 로컬 `config.json`(600)에 저장되고 패널에는 마스킹된 값만 보입니다. API는 `127.0.0.1`의 DSH webServer에만 열립니다.
 - Cloudflare API 토큰은 필요한 권한만 주고, 사용하지 않을 때는 폐기하세요.

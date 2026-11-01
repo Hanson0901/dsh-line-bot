@@ -81,7 +81,7 @@ npx dsh-line-bot install --no-companions
 2. **填入面板**：「LINE Bot → LINE 憑證」貼上 Channel ID、Channel Secret，按「儲存變更」→「驗證並讀取 bot 資訊」。成功會看到 bot 名稱與 Basic ID。
 3. **啟動 webhook 伺服器**：面板「狀態總覽」按「啟動全部」，或只按「啟動」讓 webhook server 與 tunnel 都起來（預設會自動啟動）。
 4. **開隧道**：Quick tunnel 直接按「啟動隧道」；要固定網址就在「Cloudflare Tunnel」貼 API Token →「驗證 API Token」→「建立／更新隧道與 DNS」（API Token 權限：Account → Cloudflare Tunnel → Edit、Zone → DNS → Edit、Zone → Zone → Read）。quick tunnel 每次重啟網址都會變（插件會自動把新網址寫回 LINE webhook）；具名隧道的網址則固定。
-5. **自動設定 webhook**：隧道就緒後會自動 PUT 到 LINE；若沒成功，按「把隧道網址套到 webhook」再「測試 webhook」。之後在 LINE 加 bot 好友、傳訊息即可。
+5. **自動設定 webhook**：隧道就緒後會自動 PUT 到 LINE；若沒成功，按「把隧道網址套到 webhook」再「測試 webhook」。之後在 LINE 加 bot 好友、傳訊息；第一次訊息會進入「待審核」，到面板「使用者」按「核准」後才會開始回覆（白名單預設是空的）。
 
 ## 面板各區
 
@@ -101,7 +101,7 @@ npx dsh-line-bot install --no-companions
 | 貼圖與圖片理解 | 收到 LINE 貼圖或一般圖片時抓圖給模型看；模型不吃圖時用 modlens 或另一個視覺模型描述（可關閉） |
 | DeepSeek 餘額 | 目前餘額、每輪注入、低於門檻時由角色主動提醒、提醒門檻與冷卻（僅 deepseek-account） |
 | 主動傳訊 | 開關、機率、間隔、每日／每月上限、最短間隔、安靜時段、idle、指定對象、提示詞、立即試傳、統計 |
-| 使用者 | 每位 LINE 使用者對應的 DSH session、專屬工作資料夾、目前人設（可直接改）、訊息數、上次互動、清空記憶／重設 session |
+| 使用者 | 待審核名單（核准／拒絕）、每位 LINE 使用者對應的 DSH session、專屬工作資料夾、目前人設（可直接改）、訊息數、上次互動、清空記憶／重設 session |
 | 群組 | 每個群組的 session、工作資料夾、人設、訊息數；沒被點名時的回覆機率；被 @／引用一定回；清空群組記憶 |
 | 進階設定 | 連接埠、Agent provider/model/effort/cwd/逾時、一人一個工作資料夾（含根目錄）、歡迎／錯誤／空回覆、日誌、開發用 host 重新載入 |
 
@@ -248,7 +248,8 @@ Bot 被加進群組（或多人聊天室）後：
 
 ## 安全提醒
 
-- 這等同把 DSH Agent 接到公開的 LINE 帳號：拿到 bot 的人可以讓 Agent 使用你電腦上的工具。建議在「白名單使用者 ID」填入自己的 LINE userId，只允許自己使用。
+- 白名單預設是空的：陌生人傳訊息只會進入待審核，不會建立 session、也不會呼叫工具；在面板「使用者」核准後才會開始回覆。
+- 這等同把 DSH Agent 接到 LINE：核准名單內的人可以讓 Agent 使用你電腦上的工具。請只核准你信任的 LINE 帳號，並定期檢查「使用者」清單。
 - 所有憑證都存在本機 `config.json`（600），面板只會看到遮罩後的值；API 只掛在 `127.0.0.1` 的 DSH webServer 上。
 - Cloudflare API Token 建議只給必要權限，並在不用時撤銷。
 

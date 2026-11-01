@@ -81,7 +81,7 @@ npx dsh-line-bot install --no-companions
 2. **填入面板**：「LINE Bot → LINE 凭证」贴入 Channel ID、Channel Secret，按「保存更改」→「验证并读取 bot 信息」。成功会看到 bot 名称与 Basic ID。
 3. **启动 webhook 服务器**：面板「状态总览」按「启动全部」，或只按「启动」让 webhook server 与 tunnel 都起来（默认会自动启动）。
 4. **开隧道**：Quick tunnel 直接按「启动隧道」；要固定网址就在「Cloudflare Tunnel」贴 API Token →「验证 API Token」→「创建／更新隧道与 DNS」（API Token 权限：Account → Cloudflare Tunnel → Edit、Zone → DNS → Edit、Zone → Zone → Read）。quick tunnel 每次重启网址都会变（插件会自动把新网址写回 LINE webhook）；具名隧道的网址则固定。
-5. **自动设置 webhook**：隧道就绪后会自动 PUT 到 LINE；若没成功，按「把隧道网址套到 webhook」再「测试 webhook」。之后在 LINE 加 bot 好友、传消息即可。
+5. **自动设置 webhook**：隧道就绪后会自动 PUT 到 LINE；若没成功，按「把隧道网址套到 webhook」再「测试 webhook」。之后在 LINE 加 bot 好友、传消息；第一条消息会进入「待审核」，到面板「使用者」按「核准」后才会开始回复（白名单默认为空）。
 
 ## 面板各区
 
@@ -248,6 +248,7 @@ Bot 被加入群组（或多人聊天室）后：
 
 ## 安全提醒
 
+- 白名单默认为空：陌生人发消息只会进入待审核，不会建立 session、不会调用工具；在面板「使用者」核准后才会开始回复。
 - 这等同把 DSH Agent 接到公开的 LINE 账号：拿到 bot 的人可以让 Agent 使用你电脑上的工具。建议在「白名单用户 ID」填入自己的 LINE userId，只允许自己使用。
 - 所有凭证都存在本机 `config.json`（600），面板只会看到遮罩后的值；API 只挂在 `127.0.0.1` 的 DSH webServer 上。
 - Cloudflare API Token 建议只给必要权限，并在不用时撤销。

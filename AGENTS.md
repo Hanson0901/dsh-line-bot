@@ -23,7 +23,7 @@ curl -s http://127.0.0.1:8791/health
 
 | 症狀 | 先看哪個 check | 常見原因 | 安全修法 |
 | --- | --- | --- | --- |
-| 完全沒回覆 | `server`、`tunnel`、`webhook` | webhook 指到舊 tunnel；LINE「Use webhook」沒開；伺服器沒啟動 | `doctor --fix`；面板「套用 Webhook」；到 LINE console 開 Use webhook |
+| 完全沒回覆 | `server`、`tunnel`、`webhook`、面板「使用者」待審核 | webhook 指到舊 tunnel；LINE「Use webhook」沒開；伺服器沒啟動；使用者還沒核准 | `doctor --fix`；面板「套用 Webhook」；到 LINE console 開 Use webhook；在「使用者」核准對方 |
 | 有回文字但沒圖片 | `dsh-meme`、`meme-config`、`public-url`、`media`、`converters` | 沒裝 dsh-meme；`stickers.enabled=false`；公開網址還沒就緒；GIF/webp 沒有轉圖工具 | 面板「表情包」開啟並看圖庫；`doctor --fix`；安裝 ffmpeg |
 | 回覆出現 `[[meme:…]]`、`<meme#18>` 文字 | 版本 | 舊版不認得標記格式 | 升級到 0.6.1+（目前 0.9.x） |
 | 貼圖／圖片看不懂 | `model`、`vision` | 模型不吃圖，或 modlens 不可用／失敗 | 面板「模型與接口來源」換成有 `text+image` 的模型；或安裝 modlens 並設定 provider |

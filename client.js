@@ -304,6 +304,12 @@ window.__ModuleLoader__.load({
 
     const ACTION_LABELS = {
       'meme-stats': '讀取表情包圖庫',
+      'access-list': '讀取待審核名單',
+      'access-mode': '切換身分門控',
+      'access-approve': '核准使用者',
+      'access-deny': '拒絕使用者',
+      'access-add': '加入白名單',
+      'access-remove': '移出白名單',
       start: '啟動',
       stop: '停止',
       restart: '重新啟動',
@@ -724,6 +730,7 @@ window.__ModuleLoader__.load({
 
       const cfg = draft
       const line = cfg.line || {}
+      const access = status.access || {}
       const server = cfg.server || {}
       const tunnel = cfg.tunnel || {}
       const cloudflare = cfg.cloudflare || {}
@@ -991,7 +998,16 @@ window.__ModuleLoader__.load({
             h(Btn, { onClick: () => act('webhook-test'), disabled: !!busy }, '測試 webhook'),
           ),
           h('div', { style: S.hint }, '「Use webhook」開關只能在 LINE console 的 Messaging API 設定頁手動開啟；端點本身由插件自動設定。'),
-          h(Field, { label: '白名單使用者 ID', hint: '一行一個；留空＝任何加 bot 的人都能用。可從下方「使用者」清單複製。' }, h(Area, { value: textList(line.allowedUserIds), onChange: (value) => update({ line: { allowedUserIds: parseList(value) } }), rows: 2, mono: true })),
+          h(
+            'div',
+            { style: S.grid },
+            h(Field, { label: '身分門控', hint: 'approval＝未授權者進待審核；whitelist＝直接忽略未授權者' },
+              h('select', { value: line.accessMode || 'approval', onChange: (event) => update({ line: { accessMode: event.target.value } }), style: S.input },
+                h('option', { value: 'approval' }, 'approval（待審核）'),
+                h('option', { value: 'whitelist' }, 'whitelist（直接拒絕）'))),
+            h(Field, { label: '白名單使用者 ID', hint: '一行一個；留空＝沒有人能使用。未授權者會出現在下方「使用者」待審核。' }, h(Area, { value: textList(line.allowedUserIds), onChange: (value) => update({ line: { allowedUserIds: parseList(value) } }), rows: 2, mono: true })),
+          ),
+          h('div', { style: access.gateOpen ? S.hint : S.warnBox }, access.gateOpen ? `目前已核准 ${(access.allowedUserIds || []).length} 人；未授權者不能觸發 Agent。` : '白名單目前是空的：bot 不會回覆任何人。請先讓使用者傳訊息，再到下方「使用者」核准。'),
         ),
 
         // 3. Cloudflare Tunnel
@@ -1289,6 +1305,18 @@ window.__ModuleLoader__.load({
         h(
           Card,
           { id: sectionDomId('users'), order: 12, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
+          (access.pending || []).length > 0
+            ? h('div', { style: S.panelBox },
+                h('div', { style: S.fieldTitle }, `待審核（${access.pending.length}）`),
+                h('div', { style: S.hint }, '這些人的訊息不會觸發 Agent；核准後會加入白名單並通知對方。'),
+                (access.pending || []).map((item) => h('div', { key: item.userId, style: { display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+                  h('div', { style: { flex: 1, minWidth: 0 } },
+                    h('div', null, item.displayName || '（未命名）'),
+                    h('div', { style: { ...S.hint, ...S.mono, wordBreak: 'break-all' } }, item.userId),
+                    item.lastText ? h('div', { style: S.hint }, item.lastText) : null),
+                  h(Btn, { onClick: () => act('access-approve', { userId: item.userId }), disabled: !!busy, tone: 'primary' }, '核准'),
+                  h(Btn, { onClick: () => act('access-deny', { userId: item.userId }), disabled: !!busy }, '拒絕'))))
+            : null,
           (status.users || []).length === 0
             ? h('div', { style: S.hint }, '還沒有人傳訊息給 bot。')
             : h('table', { style: S.table },

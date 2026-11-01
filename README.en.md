@@ -81,7 +81,7 @@ Without them: no dafeiyu means only plugin-local personas; no dsh-meme means tex
 2. **Fill in the panel**: under "LINE Bot → LINE credentials", paste the Channel ID and Channel Secret, click "Save changes" → "Verify and read bot info". On success you will see the bot's name and Basic ID.
 3. **Start the webhook server**: on "Overview", click "Start all", or "Start" to bring up both the webhook server and the tunnel (auto-start is on by default).
 4. **Open the tunnel**: for a quick tunnel just click "Start tunnel"; for a fixed URL, paste an API token under "Cloudflare Tunnel" → "Verify API token" → "Create/update tunnel and DNS" (token permissions: Account → Cloudflare Tunnel → Edit, Zone → DNS → Edit, Zone → Zone → Read). A quick tunnel's URL changes on every restart (the plugin writes the new URL back to the LINE webhook automatically); a named tunnel's URL is fixed.
-5. **Auto-configure the webhook**: once the tunnel is ready the endpoint is PUT to LINE automatically; if that fails, click "Apply tunnel URL to webhook" and then "Test webhook". After that, add the bot as a friend in LINE and send it a message.
+5. **Auto-configure the webhook**: once the tunnel is ready the endpoint is PUT to LINE automatically; if that fails, click "Apply tunnel URL to webhook" and then "Test webhook". After that, add the bot as a friend in LINE and send it a message; the first message lands in the pending queue — approve your userId under Users in the panel before the bot replies (the allowlist starts empty).
 
 ## Panel sections
 
@@ -101,7 +101,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Sticker & image vision | Fetch incoming LINE stickers or images and show them to the model; when the model cannot read images, describe them with modlens or a vision model (can be disabled) |
 | DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
 | Proactive messages | Toggle, probability, interval, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics |
-| Users | The DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
+| Users | Pending approval queue (approve / deny), the DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
 | Groups | Per-group session, workspace folder, persona, message count; reply chance when not addressed; always reply on @ / quote; clear group memory |
 | Advanced | Port, Agent provider/model/effort/cwd/timeout, one workspace per user (and its root), welcome/error/empty replies, logs, reload host modules (dev) |
 
@@ -248,7 +248,8 @@ The persona can attach a sticker to a text reply, or reply with just an image. I
 
 ## Security notes
 
-- This is equivalent to attaching the DSH Agent to a public LINE account: anyone who has the bot can make the Agent use tools on your computer. It is recommended to fill in your own LINE userId under "Allow-listed user IDs" so only you can use it.
+- The allowlist starts empty: unknown users are only queued as pending, with no session and no tool access, until you approve them under Users in the panel.
+- This attaches the DSH Agent to LINE: anyone you approve can make the Agent use tools on your computer. Approve only LINE accounts you trust, and review the Users list periodically.
 - All credentials are stored locally in `config.json` (600); the panel only shows masked values; the API only listens on the DSH webServer at `127.0.0.1`.
 - Give the Cloudflare API token only the permissions it needs, and revoke it when you no longer use it.
 
