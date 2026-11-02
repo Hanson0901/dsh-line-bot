@@ -12,7 +12,7 @@ Built in:
 - **Cloudflare Tunnel**: one click opens a quick tunnel (`*.trycloudflare.com`, no Cloudflare account needed), or paste a Cloudflare API token to create a named tunnel + DNS for a fixed URL; once the URL is ready it writes the webhook endpoint back to LINE and runs `webhook/test`.
 - **LINE credentials**: fill in Channel ID + Channel Secret and it issues an access token automatically (`/v2/oauth/accessToken`, about 30 days, auto-renewed near expiry); you can also paste an existing Channel Access Token.
 - **Personas**: pick any built-in or custom persona from the dafeiyu plugin in the panel, or use the plugin's own custom personas (stored in `<DSH_HOME>/line-bot/personas.json`, add/edit/import). Persona selection is per-session and does not affect other conversations in the GUI.
-- **Proactive messages**: a scheduler built into the plugin (no launchd), with configurable probability, interval, daily/monthly caps, minimum gap, quiet hours, how long the user must have been idle, target users and prompt. The Agent can reply `SKIP` when it is not a good moment.
+- **Proactive messages**: a scheduler built into the plugin (no launchd). Each user gets an independent randomized countdown (between a minimum and maximum interval); it only speaks when the countdown is due and the user has been idle long enough. Configurable min/max interval, daily/monthly caps, minimum gap, quiet hours, idle time, unanswered limit (pause after that many unanswered proactive messages, reset when the user replies), target users and prompt. The Agent can reply `SKIP` when it is not a good moment.
 - **Full settings panel**: every setting lives under Settings → LINE Bot and is stored in `<DSH_HOME>/line-bot/config.json` (mode 600).
 
 > About "log in with LINE Business ID and have the panel create the bot": since 2024-09 LINE only allows creating a Messaging API channel manually in [LINE Official Account Manager](https://manager.line.biz/), with no public API; LINE Login only authenticates identity and cannot grant management rights over an Official Account. So the panel does not create the bot, but it gives you the correct entry links and automates everything after "you have the Channel ID / Secret" (issuing the token, setting the webhook, testing it).
@@ -100,7 +100,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Memes | Reply with images/stickers from the dsh-meme library, enable/disable, image limit, and sample previews |
 | Sticker & image vision | Fetch incoming LINE stickers or images and show them to the model; when the model cannot read images, describe them with modlens or a vision model (can be disabled) |
 | DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
-| Proactive messages | Toggle, probability, interval, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics |
+| Proactive messages | Toggle, per-user countdown, min/max interval, unanswered limit, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics (next possible time and paused users) |
 | Users | Pending approval queue (approve / deny), the DSH session each LINE user maps to, their own workspace folder, their current persona (editable), message count, last interaction, clear memory / reset session |
 | Groups | Per-group session, workspace folder, persona, message count; reply chance when not addressed; always reply on @ / quote; clear group memory |
 | Advanced | Port, Agent provider/model/effort/cwd/timeout, one workspace per user (and its root), welcome/error/empty replies, logs, reload host modules (dev) |
@@ -119,7 +119,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 2. It finds (or creates) the DSH session and workspace folder for that `userId`, then decides the session's persona: for dafeiyu it sets the session persona through dafeiyu's HTTP bridge; for a plugin custom persona it first asks dafeiyu to step aside in that session (`none`), then injects the custom persona into the system prompt.
 3. It creates/resumes the Agent in the same DSH process with `agents.create` / `agents.resume`, sends one user message with `followup`, and waits for the turn to end, subagents to settle, and the session to flush.
 4. It takes the last assistant text from the session events and replies with LINE reply; if the reply token has expired it falls back to push.
-5. The proactive-message scheduler checks once a minute (interval, quiet hours, caps, probability); when conditions are met it asks the Agent to say something on its own and pushes it.
+5. Every minute the scheduler checks each user's countdown; when it is due and the user has been idle long enough it asks the Agent to say something on its own and pushes it. After too many unanswered proactive messages it pauses until the user replies.
 
 ## Model & provider
 

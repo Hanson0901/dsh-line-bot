@@ -1246,11 +1246,12 @@ window.__ModuleLoader__.load({
         // 5. 主動傳訊
         h(
           Card,
-          { id: sectionDomId('nudge'), order: 10, title: '主動傳訊（大肥魚自己找人聊天）', desc: '由插件內建排程器執行：每隔幾分鐘擲骰子，符合條件就請 Agent 主動傳一句；不適合時 Agent 可回 SKIP。' },
+          { id: sectionDomId('nudge'), order: 10, title: '主動傳訊（大肥魚自己找人聊天）', desc: '每位使用者各自倒數：在最短～最長間隔之間隨機挑一個時間，沉默夠久且時間到才請 Agent 主動傳一句；不適合時 Agent 可回 SKIP。連續沒回覆達上限會暫停，對方一說話就歸零。' },
           h(Toggle, { checked: !!nudgeCfg.enabled, onChange: (value) => update({ nudge: { enabled: value } }), label: '開啟主動傳訊' }),
           h('div', { style: S.grid },
-            h(Field, { label: '每次擲骰機率（0~1）', hint: '例：0.18 ＝ 每輪 18% 機率開口' }, h(Num, { value: nudgeCfg.chance, min: 0, max: 1, step: 0.01, onChange: (value) => update({ nudge: { chance: value } }) })),
-            h(Field, { label: '檢查間隔（分鐘）' }, h(Num, { value: nudgeCfg.intervalMinutes, min: 1, max: 1440, onChange: (value) => update({ nudge: { intervalMinutes: value } }) })),
+            h(Field, { label: '最短間隔（分鐘）', hint: '每位使用者獨立倒數' }, h(Num, { value: nudgeCfg.minIntervalMinutes, min: 5, max: 1440, onChange: (value) => update({ nudge: { minIntervalMinutes: value } }) })),
+            h(Field, { label: '最長間隔（分鐘）', hint: '實際時間在最短～最長之間隨機' }, h(Num, { value: nudgeCfg.maxIntervalMinutes, min: 5, max: 1440, onChange: (value) => update({ nudge: { maxIntervalMinutes: value } }) })),
+            h(Field, { label: '連續未回覆上限（則）', hint: '連續幾次沒回就暫停；對方一說話就歸零（0＝不限）' }, h(Num, { value: nudgeCfg.unansweredLimit, min: 0, max: 20, onChange: (value) => update({ nudge: { unansweredLimit: value } }) })),
             h(Field, { label: '每日上限（則）' }, h(Num, { value: nudgeCfg.dailyCap, min: 0, max: 100, onChange: (value) => update({ nudge: { dailyCap: value } }) })),
             h(Field, { label: '每月上限（則）' }, h(Num, { value: nudgeCfg.monthlyCap, min: 0, max: 1000, onChange: (value) => update({ nudge: { monthlyCap: value } }) })),
             h(Field, { label: '兩則之間至少間隔（分鐘）' }, h(Num, { value: nudgeCfg.minGapMinutes, min: 0, max: 10080, onChange: (value) => update({ nudge: { minGapMinutes: value } }) })),
@@ -1269,7 +1270,8 @@ window.__ModuleLoader__.load({
               ['今日', `${nudgeStats.dayCount ?? 0} / ${nudgeCfg.dailyCap ?? '—'} 則`],
               ['本月', `${nudgeStats.monthCount ?? 0} / ${nudgeCfg.monthlyCap ?? '—'} 則`],
               ['上次傳訊', fmtTime(nudgeStats.lastAt)],
-              ['下次檢查', fmtTime(nudgeStats.nextAt)],
+              ['下次可能主動', fmtTime(nudgeStats.nextAt)],
+              ['暫停中的人', `${nudgeStats.pausedUsers ?? 0} 位`],
               ['上次結果', nudgeStats.lastReason || '—'],
             ],
           }),
@@ -1320,7 +1322,7 @@ window.__ModuleLoader__.load({
           (status.users || []).length === 0
             ? h('div', { style: S.hint }, '還沒有人傳訊息給 bot。')
             : h('table', { style: S.table },
-                h('thead', null, h('tr', null, h('th', { style: S.th }, '使用者'), h('th', { style: S.th }, 'session／記憶資料夾'), h('th', { style: S.th }, '訊息'), h('th', { style: S.th }, '人設'), h('th', { style: S.th }, '上次互動'), h('th', { style: S.th }, ''))),
+                h('thead', null, h('tr', null, h('th', { style: S.th }, '使用者'), h('th', { style: S.th }, 'session／記憶資料夾'), h('th', { style: S.th }, '訊息'), h('th', { style: S.th }, '人設'), h('th', { style: S.th }, '下次主動'), h('th', { style: S.th }, '未回覆'), h('th', { style: S.th }, '上次互動'), h('th', { style: S.th }, ''))),
                 h('tbody', null, (status.users || []).map((user) =>
                   h('tr', { key: user.userId },
                     h('td', { style: S.td }, h('div', null, user.displayName || '（未命名）'), h('div', { style: { ...S.hint, ...S.mono } }, user.userId)),
@@ -1335,6 +1337,8 @@ window.__ModuleLoader__.load({
                       },
                         (personaCatalog.length ? personaCatalog : [{ id: user.personaId, name: user.personaName || user.personaId }]).map((item) =>
                           h('option', { key: item.id, value: item.id }, `${item.name}${item.source === 'local' ? '（自訂）' : ''}`)))),
+                    h('td', { style: S.td }, user.nudgePaused ? h('span', { style: S.hint }, '暫停中') : fmtTime(user.nudgeNextAt)),
+                    h('td', { style: S.td }, String(user.nudgeUnanswered ?? 0)),
                     h('td', { style: S.td }, fmtTime(user.lastAt)),
                     h('td', { style: S.td }, h('div', { style: S.row },
                       h(Btn, { onClick: () => act('user-reset', { userId: user.userId }), disabled: !!busy, tone: 'danger' }, '重設 session'),

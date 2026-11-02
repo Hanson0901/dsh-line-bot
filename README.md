@@ -12,7 +12,7 @@
 - **Cloudflare Tunnel**：一鍵開 quick tunnel（`*.trycloudflare.com`，免 Cloudflare 帳號），或貼上 Cloudflare API Token 建立具名隧道＋DNS，取得固定網址；取得網址後自動把 webhook 端點寫回 LINE 並跑一次 `webhook/test`。
 - **LINE 憑證**：填 Channel ID＋Channel Secret 就能自動簽發 access token（`/v2/oauth/accessToken`，約 30 天，快到期會自動續簽）；也可以直接貼上既有的 Channel Access Token。
 - **人設**：面板可選大肥魚插件裡任何一個內建／自訂人設，或插件內建的自訂人設（存在 `<DSH_HOME>/line-bot/personas.json`，可新增／編輯／匯入）。人設是「逐 session」指定，不會改到你 GUI 裡其他對話的人設。
-- **主動傳訊**：插件內建排程器（不用 launchd），可調機率、間隔、每日／每月上限、最短間隔、安靜時段、對方安靜多久才可打擾、指定對象與提示詞；Agent 覺得不適合時可以回 `SKIP` 跳過。
+- **主動傳訊**：插件內建排程器（不用 launchd），每位使用者各自倒數（最短～最長間隔隨機）；可調最短／最長間隔、每日／每月上限、兩則間距、安靜時段、對方安靜多久才可打擾、連續未回覆上限（達上限暫停，對方回話後歸零）、指定對象與提示詞；Agent 覺得不適合時可以回 `SKIP` 跳過。
 - **完整設定面板**：所有設定都在「設定 → LINE Bot」裡，存到 `<DSH_HOME>/line-bot/config.json`（權限 600）。
 
 > 關於「用 LINE Business ID 登入、由面板代建 bot」：LINE 自 2024-09 起只允許在 [LINE Official Account Manager](https://manager.line.biz/) 手動建立 Messaging API channel，沒有公開 API；LINE Login 也只是身分驗證，不能取得官方帳號的管理權。所以面板不代建 bot，但會給你正確的入口連結，並把「拿到 Channel ID / Secret 之後」的所有步驟自動化（簽 token、設 webhook、測試）。
@@ -100,7 +100,7 @@ npx dsh-line-bot install --no-companions
 | 表情包 | 使用 dsh-meme 圖庫回圖片／貼圖、開關、一次最多幾張、圖庫樣本 |
 | 貼圖與圖片理解 | 收到 LINE 貼圖或一般圖片時抓圖給模型看；模型不吃圖時用 modlens 或另一個視覺模型描述（可關閉） |
 | DeepSeek 餘額 | 目前餘額、每輪注入、低於門檻時由角色主動提醒、提醒門檻與冷卻（僅 deepseek-account） |
-| 主動傳訊 | 開關、機率、間隔、每日／每月上限、最短間隔、安靜時段、idle、指定對象、提示詞、立即試傳、統計 |
+| 主動傳訊 | 開關、每位使用者的倒數、最短／最長間隔、連續未回覆上限、每日／每月上限、兩則間距、安靜時段、idle、指定對象、提示詞、立即試傳、統計（下次可能時間與暫停人數） |
 | 使用者 | 待審核名單（核准／拒絕）、每位 LINE 使用者對應的 DSH session、專屬工作資料夾、目前人設（可直接改）、訊息數、上次互動、清空記憶／重設 session |
 | 群組 | 每個群組的 session、工作資料夾、人設、訊息數；沒被點名時的回覆機率；被 @／引用一定回；清空群組記憶 |
 | 進階設定 | 連接埠、Agent provider/model/effort/cwd/逾時、一人一個工作資料夾（含根目錄）、歡迎／錯誤／空回覆、日誌、開發用 host 重新載入 |
@@ -119,7 +119,7 @@ npx dsh-line-bot install --no-companions
 2. 依 `userId` 找到（或建立）對應的 DSH session 與工作資料夾，決定這個 session 的人設：選大肥魚時透過它的 HTTP bridge 指定 session 人設；選插件自訂人設時，先請大肥魚在該 session 讓開（`none`），再由插件把自訂人設注入 system prompt。
 3. 用 `agents.create`／`agents.resume` 在同一個 DSH 行程內建立／接續 Agent，`followup` 一則使用者訊息，等到 turn 結束、子代理收斂、session flush。
 4. 從 session 事件取出最後一段 assistant 文字，用 LINE reply 回覆；reply token 過期就自動改 push。
-5. 主動傳訊排程器每分鐘檢查一次（間隔、安靜時段、上限、機率），符合條件就請 Agent 主動說一句，再 push 出去。
+5. 主動傳訊排程器每分鐘檢查一次：逐位使用者到期、且沉默夠久才請 Agent 主動說一句，再 push 出去；連續未回覆達上限會暫停，對方回話後重新倒數。
 
 ## 模型與接口來源
 
