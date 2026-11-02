@@ -13,6 +13,7 @@
 - **LINE 憑證**：填 Channel ID＋Channel Secret 就能自動簽發 access token（`/v2/oauth/accessToken`，約 30 天，快到期會自動續簽）；也可以直接貼上既有的 Channel Access Token。
 - **人設**：面板可選大肥魚插件裡任何一個內建／自訂人設，或插件內建的自訂人設（存在 `<DSH_HOME>/line-bot/personas.json`，可新增／編輯／匯入）。人設是「逐 session」指定，不會改到你 GUI 裡其他對話的人設。
 - **主動傳訊**：插件內建排程器（不用 launchd），每位使用者各自倒數（最短～最長間隔隨機）；可調最短／最長間隔、每日／每月上限、兩則間距、安靜時段、對方安靜多久才可打擾、連續未回覆上限（達上限暫停，對方回話後歸零）、指定對象與提示詞；Agent 覺得不適合時可以回 `SKIP` 跳過。
+- **分段回覆**：可把回覆依空行（段落）或每個換行拆成多個 LINE 訊息框，最多 5 則，不再全部擠在同一則；面板可切換分段方式或關閉。
 - **完整設定面板**：所有設定都在「設定 → LINE Bot」裡，存到 `<DSH_HOME>/line-bot/config.json`（權限 600）。
 
 > 關於「用 LINE Business ID 登入、由面板代建 bot」：LINE 自 2024-09 起只允許在 [LINE Official Account Manager](https://manager.line.biz/) 手動建立 Messaging API channel，沒有公開 API；LINE Login 也只是身分驗證，不能取得官方帳號的管理權。所以面板不代建 bot，但會給你正確的入口連結，並把「拿到 Channel ID / Secret 之後」的所有步驟自動化（簽 token、設 webhook、測試）。
@@ -90,7 +91,7 @@ npx dsh-line-bot install --no-companions
 | 區塊 | 內容 |
 | --- | --- |
 | 狀態總覽 | webhook server／隧道／LINE／人設／主動傳訊的綠燈狀態、公開網址、一鍵上線與啟停 |
-| LINE 憑證 | Channel ID、Channel Secret、Access Token、自動簽發、loading 動畫、bot 資訊、webhook 套用／測試、白名單 |
+| LINE 憑證 | Channel ID、Channel Secret、Access Token、自動簽發、loading 動畫、分段回覆、bot 資訊、webhook 套用／測試、白名單 |
 | Cloudflare Tunnel | quick／API Token 模式、Token、hostname、隧道名稱、Account／Zone ID、下載 cloudflared、啟停、自動設定 webhook、自行提供的公開網址 |
 | 模型與接口來源 | 選擇 LINE 回覆的 provider／模型與推理強度；非 deepseek-account 時自動停用 DeepSeek 餘額 |
 | 回覆人設 | 選擇人設（大肥魚或插件自訂）、新增／編輯／刪除自訂人設、把目前人設複製成自訂、強制套用、允許使用者自己換人設、切換大肥魚 session 模式、測試 Agent 回覆 |

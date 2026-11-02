@@ -13,6 +13,7 @@ LINE 公式アカウント（Messaging API）を DeepSeek Harness につなぐ�
 - **LINE 認証情報**：Channel ID と Channel Secret を入力すれば access token を自動発行（`/v2/oauth/accessToken`、約 30 日、期限が近づくと自動更新）。既存の Channel Access Token を貼り付けることもできます。
 - **ペルソナ**：パネルから大肥魚プラグインの内蔵／カスタムペルソナを選べるほか、プラグイン内蔵のカスタムペルソナ（`<DSH_HOME>/line-bot/personas.json`、追加・編集・インポート可）も使えます。ペルソナはセッション単位で指定され、GUI の他の会話には影響しません。
 - **自発メッセージ**：プラグイン内蔵のスケジューラー（launchd 不要）。ユーザーごとに独立したランダムなカウントダウン（最短～最長間隔）を持ち、時間が来て相手の沈黙が十分長いときだけ話しかけます。最短／最長間隔、1 日／1 か月の上限、最低間隔、静かな時間帯、idle、連続未返信の上限（上限に達したら一時停止、相手が返信したらリセット）、対象ユーザー、プロンプトを設定できます。Agent が「今は違う」と判断したら `SKIP` を返して見送れます。
+- **分割返信**：返信を空行（段落）または改行ごとに最大 5 つの LINE メッセージに分割できます。1 つの長い吹き出しに詰め込まずに送れます。パネルで方式の切り替えやオフも可能です。
 - **充実した設定パネル**：設定はすべて「設定 → LINE Bot」にあり、`<DSH_HOME>/line-bot/config.json`（モード 600）に保存されます。
 
 > 「LINE Business ID でログインしてパネルから bot を作る」ことについて：LINE は 2024-09 以降、Messaging API チャネルの作成を [LINE Official Account Manager](https://manager.line.biz/) での手動操作のみに制限しており、公開 API はありません。LINE Login も本人確認だけで、公式アカウントの管理権限は取得できません。そのためパネルは bot を作成しませんが、正しい入口リンクを提示し、「Channel ID / Secret を取得した後」の作業（トークン発行、webhook 設定、テスト）を自動化します。
@@ -90,7 +91,7 @@ npx dsh-line-bot install --no-companions
 | セクション | 内容 |
 | --- | --- |
 | 概要 | webhook サーバー／トンネル／LINE／ペルソナ／自発メッセージの状態、公開 URL、ワンクリック起動と停止 |
-| LINE 認証情報 | Channel ID、Channel Secret、Access Token、自動発行、ローディング表示、bot 情報、webhook の適用／テスト、許可リスト |
+| LINE 認証情報 | Channel ID、Channel Secret、Access Token、自動発行、ローディング表示、分割返信、bot 情報、webhook の適用／テスト、許可リスト |
 | Cloudflare Tunnel | quick／API トークンモード、トークン、hostname、トンネル名、Account／Zone ID、cloudflared のダウンロード、起動／停止、webhook 自動設定、独自の公開 URL |
 | モデルとプロバイダー | LINE 返信で使う provider／モデルと推論強度を選択。deepseek-account 以外では DeepSeek 残高を自動で無効化 |
 | 返信ペルソナ | ペルソナ選択（大肥魚またはプラグインのカスタム）、カスタムペルソナの追加・編集・削除、現在のペルソナをカスタムに複製、強制適用、ユーザーによる切り替え許可、大肥魚を session モードに切り替え、Agent 返信のテスト |

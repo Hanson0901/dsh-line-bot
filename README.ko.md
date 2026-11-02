@@ -13,6 +13,7 @@ LINE 공식 계정(Messaging API)을 DeepSeek Harness에 연결하는 플러그�
 - **LINE 자격 증명**: Channel ID와 Channel Secret을 입력하면 access token을 자동 발급합니다(`/v2/oauth/accessToken`, 약 30일, 만료 전 자동 갱신). 기존 Channel Access Token을 붙여 넣어도 됩니다.
 - **페르소나**: 패널에서 大肥魚 플러그인의 내장／커스텀 페르소나를 고르거나, 플러그인 내장 커스텀 페르소나(`<DSH_HOME>/line-bot/personas.json`, 추가/편집/가져오기)를 쓸 수 있습니다. 페르소나는 세션 단위로 지정되며 GUI의 다른 대화에는 영향을 주지 않습니다.
 - **능동 메시지**: 플러그인 내장 스케줄러(launchd 불필요). 사용자마다 독립적인 무작위 카운트다운(최소~최대 간격)을 가지며, 시간이 되고 상대의 침묵이 충분히 길 때만 말을 겁니다. 최소/최대 간격, 일일/월간 상한, 최소 간격, 조용한 시간대, idle, 연속 미응답 상한(도달 시 일시 중지, 상대가 답하면 초기화), 대상 사용자, 프롬프트를 설정할 수 있습니다. Agent가 지금은 아니라고 판단하면 `SKIP`을 반환해 건너뜁니다.
+- **분할 답장**: 답장을 빈 줄(문단) 또는 줄바꿈마다 최대 5개의 LINE 메시지로 나눠 보낼 수 있습니다. 하나의 긴 말풍선에 몰아넣지 않습니다. 패널에서 방식을 바꾸거나 끌 수 있습니다.
 - **전체 설정 패널**: 모든 설정이 "설정 → LINE Bot"에 있으며 `<DSH_HOME>/line-bot/config.json`(모드 600)에 저장됩니다.
 
 > "LINE Business ID로 로그인해서 패널에서 bot을 만드는" 것에 대해: LINE은 2024-09부터 Messaging API 채널 생성을 [LINE Official Account Manager](https://manager.line.biz/)에서 수동으로만 허용하며 공개 API가 없습니다. LINE Login도 신원 확인일 뿐 공식 계정 관리 권한을 얻을 수 없습니다. 그래서 패널은 bot을 만들지 않지만, 올바른 진입 링크를 알려 주고 "Channel ID / Secret을 얻은 뒤"의 모든 단계(토큰 발급, webhook 설정, 테스트)를 자동화합니다.
@@ -90,7 +91,7 @@ npx dsh-line-bot install --no-companions
 | 섹션 | 내용 |
 | --- | --- |
 | 개요 | webhook 서버／터널／LINE／페르소나／능동 메시지 상태, 공개 URL, 원클릭 기동과 시작/중지 |
-| LINE 자격 증명 | Channel ID, Channel Secret, Access Token, 자동 발급, 로딩 표시, bot 정보, webhook 적용/테스트, 허용 목록 |
+| LINE 자격 증명 | Channel ID, Channel Secret, Access Token, 자동 발급, 로딩 표시, 분할 답장, bot 정보, webhook 적용/테스트, 허용 목록 |
 | Cloudflare Tunnel | quick／API 토큰 모드, 토큰, hostname, 터널 이름, Account／Zone ID, cloudflared 다운로드, 시작/중지, webhook 자동 설정, 직접 제공하는 공개 URL |
 | 모델과 공급자 | LINE 답장에 쓸 provider／모델과 추론 강도 선택. deepseek-account가 아니면 DeepSeek 잔액 자동 비활성화 |
 | 답장 페르소나 | 페르소나 선택(大肥魚 또는 플러그인 커스텀), 커스텀 페르소나 추가/편집/삭제, 현재 페르소나를 커스텀으로 복사, 강제 적용, 사용자 직접 전환 허용, 大肥魚를 session 모드로 전환, Agent 답장 테스트 |

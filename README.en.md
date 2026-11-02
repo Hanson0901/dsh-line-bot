@@ -13,6 +13,7 @@ Built in:
 - **LINE credentials**: fill in Channel ID + Channel Secret and it issues an access token automatically (`/v2/oauth/accessToken`, about 30 days, auto-renewed near expiry); you can also paste an existing Channel Access Token.
 - **Personas**: pick any built-in or custom persona from the dafeiyu plugin in the panel, or use the plugin's own custom personas (stored in `<DSH_HOME>/line-bot/personas.json`, add/edit/import). Persona selection is per-session and does not affect other conversations in the GUI.
 - **Proactive messages**: a scheduler built into the plugin (no launchd). Each user gets an independent randomized countdown (between a minimum and maximum interval); it only speaks when the countdown is due and the user has been idle long enough. Configurable min/max interval, daily/monthly caps, minimum gap, quiet hours, idle time, unanswered limit (pause after that many unanswered proactive messages, reset when the user replies), target users and prompt. The Agent can reply `SKIP` when it is not a good moment.
+- **Split replies**: optionally split a reply into up to five LINE bubbles by blank line (paragraph) or every newline, instead of one long bubble; the panel can change the mode or turn it off.
 - **Full settings panel**: every setting lives under Settings → LINE Bot and is stored in `<DSH_HOME>/line-bot/config.json` (mode 600).
 
 > About "log in with LINE Business ID and have the panel create the bot": since 2024-09 LINE only allows creating a Messaging API channel manually in [LINE Official Account Manager](https://manager.line.biz/), with no public API; LINE Login only authenticates identity and cannot grant management rights over an Official Account. So the panel does not create the bot, but it gives you the correct entry links and automates everything after "you have the Channel ID / Secret" (issuing the token, setting the webhook, testing it).
@@ -90,7 +91,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Section | Contents |
 | --- | --- |
 | Overview | Green-light status for webhook server / tunnel / LINE / persona / proactive messages, public URL, one-click bring-up and start/stop |
-| LINE credentials | Channel ID, Channel Secret, Access Token, auto-issue, loading animation, bot info, webhook apply/test, allow-list |
+| LINE credentials | Channel ID, Channel Secret, Access Token, auto-issue, loading animation, split replies, bot info, webhook apply/test, allow-list |
 | Cloudflare Tunnel | quick / API token modes, token, hostname, tunnel name, Account/Zone ID, download cloudflared, start/stop, auto-configure webhook, bring your own public URL |
 | Model & provider | Pick the provider/model and reasoning effort for LINE replies; disables DeepSeek balance when the provider is not deepseek-account |
 | Reply persona | Choose a persona (dafeiyu or a plugin custom one), add/edit/delete custom personas, copy the current persona into a custom one, enforce, allow users to switch personas, switch dafeiyu to session mode, test an Agent reply |
