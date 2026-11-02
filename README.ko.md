@@ -11,7 +11,7 @@ LINE 공식 계정(Messaging API)을 DeepSeek Harness에 연결하는 플러그�
 - **Webhook 서버**: 로컬 `127.0.0.1`에 HTTP 서버를 열고 LINE의 `X-Line-Signature` 검증, 이벤트 중복 제거, 사용자별 큐를 처리합니다.
 - **Cloudflare Tunnel**: 원클릭 quick tunnel(`*.trycloudflare.com`, Cloudflare 계정 불필요) 또는 Cloudflare API 토큰을 붙여 넣어 이름 있는 터널＋DNS를 만들고 고정 URL을 얻습니다. URL이 준비되면 webhook 엔드포인트를 LINE에 다시 쓰고 `webhook/test`를 실행합니다.
 - **LINE 자격 증명**: Channel ID와 Channel Secret을 입력하면 access token을 자동 발급합니다(`/v2/oauth/accessToken`, 약 30일, 만료 전 자동 갱신). 기존 Channel Access Token을 붙여 넣어도 됩니다.
-- **페르소나**: 패널에서 大肥魚 플러그인의 내장／커스텀 페르소나를 고르거나, 플러그인 내장 커스텀 페르소나(`<DSH_HOME>/line-bot/personas.json`, 추가/편집/가져오기)를 쓸 수 있습니다. 페르소나는 세션 단위로 지정되며 GUI의 다른 대화에는 영향을 주지 않습니다.
+- **大肥魚 플러그인이 없을 때**: 플러그인 내장 번체 중국어 버전(大肥魚／阿茶／聽瀾)으로 자동 전환됩니다. 같은 `personas.json`에 저장되며 커스텀 페르소나처럼 편집할 수 있습니다. 大肥魚를 다시 설치하면 자동으로 원래 페르소나로 돌아갑니다.
 - **능동 메시지**: 플러그인 내장 스케줄러(launchd 불필요). 사용자마다 독립적인 무작위 카운트다운(최소~최대 간격)을 가지며, 시간이 되고 상대의 침묵이 충분히 길 때만 말을 겁니다. 최소/최대 간격, 일일/월간 상한, 최소 간격, 조용한 시간대, idle, 연속 미응답 상한(도달 시 일시 중지, 상대가 답하면 초기화), 대상 사용자, 프롬프트를 설정할 수 있습니다. Agent가 지금은 아니라고 판단하면 `SKIP`을 반환해 건너뜁니다.
 - **분할 답장**: 답장을 빈 줄(문단) 또는 줄바꿈마다 최대 5개의 LINE 메시지로 나눠 보낼 수 있습니다. 하나의 긴 말풍선에 몰아넣지 않습니다. 패널에서 방식을 바꾸거나 끌 수 있습니다.
 - **전체 설정 패널**: 모든 설정이 "설정 → LINE Bot"에 있으며 `<DSH_HOME>/line-bot/config.json`(모드 600)에 저장됩니다.

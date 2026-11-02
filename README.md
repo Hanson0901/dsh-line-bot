@@ -11,7 +11,7 @@
 - **Webhook 伺服器**：在本機 `127.0.0.1` 開一個 HTTP server，處理 LINE 的 `X-Line-Signature` 驗章、事件去重、每位使用者各自的佇列。
 - **Cloudflare Tunnel**：一鍵開 quick tunnel（`*.trycloudflare.com`，免 Cloudflare 帳號），或貼上 Cloudflare API Token 建立具名隧道＋DNS，取得固定網址；取得網址後自動把 webhook 端點寫回 LINE 並跑一次 `webhook/test`。
 - **LINE 憑證**：填 Channel ID＋Channel Secret 就能自動簽發 access token（`/v2/oauth/accessToken`，約 30 天，快到期會自動續簽）；也可以直接貼上既有的 Channel Access Token。
-- **人設**：面板可選大肥魚插件裡任何一個內建／自訂人設，或插件內建的自訂人設（存在 `<DSH_HOME>/line-bot/personas.json`，可新增／編輯／匯入）。人設是「逐 session」指定，不會改到你 GUI 裡其他對話的人設。
+- **沒有大肥魚外掛時**：自動改用插件內建的繁體中文版本（大肥魚／阿茶／聽瀾），存在同一個 `personas.json`，可以像自訂人設一樣點開編輯；裝回大肥魚外掛後會自動切回外掛的人設。
 - **主動傳訊**：插件內建排程器（不用 launchd），每位使用者各自倒數（最短～最長間隔隨機）；可調最短／最長間隔、每日／每月上限、兩則間距、安靜時段、對方安靜多久才可打擾、連續未回覆上限（達上限暫停，對方回話後歸零）、指定對象與提示詞；Agent 覺得不適合時可以回 `SKIP` 跳過。
 - **分段回覆**：可把回覆依空行（段落）或每個換行拆成多個 LINE 訊息框，最多 5 則，不再全部擠在同一則；面板可切換分段方式或關閉。
 - **完整設定面板**：所有設定都在「設定 → LINE Bot」裡，存到 `<DSH_HOME>/line-bot/config.json`（權限 600）。

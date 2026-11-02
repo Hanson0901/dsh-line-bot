@@ -634,7 +634,10 @@ window.__ModuleLoader__.load({
       }
 
       async function removeLocalPersona(item) {
-        if (typeof window !== 'undefined' && !window.confirm(`刪除自訂人設「${item.name}」？`)) return
+        const message = item.builtin
+          ? `刪除內建人設「${item.name}」？沒有大肥魚外掛時就沒有這份繁中版本可用（重新載入插件才會補回）。`
+          : `刪除自訂人設「${item.name}」？`
+        if (typeof window !== 'undefined' && !window.confirm(message)) return
         await act('local-persona-remove', { id: item.id })
         if (localEdit.id === item.id) setLocalEdit({ id: '', name: '', text: '' })
       }
@@ -763,6 +766,7 @@ window.__ModuleLoader__.load({
       const personaCatalog = Array.isArray(persona.catalog) && persona.catalog.length
         ? persona.catalog
         : [...personaOptions, ...personaLocal]
+      const personaLocalSelectable = personaLocal.filter((item) => !item.builtin || persona.bridgeAvailable === false)
       const selectedPersona = personaCatalog.find((item) => item.id === personaCfg.id) || null
       const selectedName = selectedPersona?.name || personaCfg.id || '大肥魚'
       const selectedIsLocal = String(personaCfg.id || '').startsWith('local:')
@@ -1133,9 +1137,9 @@ window.__ModuleLoader__.load({
                       personaOptions.filter((item) => item.enabled !== false).map((item) =>
                         h('option', { key: item.id, value: item.id }, `${item.name}${item.builtin ? '（內建）' : ''} · ${item.chars} 字`)))
                   : null,
-                personaLocal.length
-                  ? h('optgroup', { label: '插件自訂' },
-                      personaLocal.map((item) => h('option', { key: item.id, value: item.id }, `${item.name} · ${item.chars} 字`)))
+                personaLocalSelectable.length
+                  ? h('optgroup', { label: '插件自訂／內建' },
+                      personaLocalSelectable.map((item) => h('option', { key: item.id, value: item.id }, `${item.name}${item.builtin ? '（內建）' : ''} · ${item.chars} 字`)))
                   : null,
                 (!personaCatalog.length)
                   ? h('option', { value: personaCfg.id || '' }, selectedName)
@@ -1143,7 +1147,9 @@ window.__ModuleLoader__.load({
             h(Field, { label: '人設來源' },
               h('div', { style: { fontSize: 12, paddingTop: 4 } },
                 selectedIsLocal
-                  ? '插件自訂人設：每一輪由插件注入 system prompt，不需要任何外掛。'
+                  ? (selectedPersona?.builtin
+                      ? '插件內建繁體人設：沒有大肥魚外掛時使用，每一輪由插件注入 system prompt，可直接編輯。'
+                      : '插件自訂人設：每一輪由插件注入 system prompt，不需要任何外掛。')
                   : `大肥魚 · ${persona.mode || '未知'}${persona.mode === 'session' ? '（可逐 session 指定）' : '（目前不是 session 模式，指定可能無效）'}`)),
           ),
           h(Toggle, { checked: personaCfg.enforce !== false, onChange: (value) => update({ persona: { enforce: value } }), label: '強制使用選擇的人設', hint: '關掉＝完全不套用人設（連大肥魚也不指定）' }),
@@ -1156,8 +1162,8 @@ window.__ModuleLoader__.load({
           ),
           h('div', { style: S.hint }, '切換 session 模式會改變大肥魚插件在全域的行為（每個 session 可各自指定人設），這是它官方支援的設定。'),
           h('div', { style: { ...S.panelBox, marginTop: 4 } },
-            h('div', { style: S.fieldTitle }, '自訂人設（插件內建，不依賴外掛）'),
-            h('div', { style: S.hint }, `存在 ${persona.localPath || '<資料夾>/personas.json'}。可以新增／編輯／刪除，或把目前的大肥魚人設複製一份過來再改。`),
+            h('div', { style: S.fieldTitle }, '自訂與內建人設（插件內建，不依賴外掛）'),
+            h('div', { style: S.hint }, `存在 ${persona.localPath || '<資料夾>/personas.json'}。沒有大肥魚外掛時，大肥魚／阿茶／聽瀾會自動改用這裡的繁體中文版本；可以新增、編輯、刪除，或把目前的大肥魚人設複製一份過來再改。`),
             h('div', { style: S.grid },
               h(Field, { label: '名稱' }, h(Text, { value: localEdit.name, onChange: (value) => setLocalEdit((prev) => ({ ...prev, name: value })), placeholder: '例如：我的助手' })),
             ),
@@ -1172,7 +1178,7 @@ window.__ModuleLoader__.load({
               ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 } },
                   personaLocal.map((item) =>
                     h('div', { key: item.id, style: { ...S.row, justifyContent: 'space-between' } },
-                      h('span', { style: { fontSize: 12 } }, `${item.name}（${item.chars} 字）`),
+                      h('span', { style: { fontSize: 12 } }, `${item.name}${item.builtin ? '（內建）' : ''}（${item.chars} 字）`),
                       h('div', { style: S.row },
                         h(Btn, { onClick: () => editLocalPersona(item), disabled: !!busy }, '編輯'),
                         h(Btn, { onClick: () => removeLocalPersona(item), disabled: !!busy, tone: 'danger' }, '刪除')))))
