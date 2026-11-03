@@ -1,3 +1,8 @@
+## 0.10.4
+
+- Windows 語音引擎：優先選擇含 `openblas.dll` 的完整 CrispASR bundle，忽略舊安裝留下的裸 `crispasr.exe`（避免 `STATUS_DLL_NOT_FOUND`）。
+- `--version` 驗證改在執行檔所在資料夾執行，確保 DLL 可被找到；失敗訊息保留實際 stderr。
+
 ## 0.10.3
 
 - 面板「重新偵測」不再同步匯入 MLX 套件（原本可能卡住 8–30 秒），偵測一律走快取與檔案檢查。
