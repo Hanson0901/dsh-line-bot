@@ -231,6 +231,9 @@ Bot이 그룹(또는 다인 룸)에 추가되면:
 - 합성에는 약 20–40초가 걸립니다. reply token이 만료되면 push로 자동 전환됩니다. 음성은 `<DSH_HOME>/line-bot/media/`에 저장되고 tunnel의 `/media/<token>`으로 제공됩니다.
 - `ffmpeg`가 필요합니다. MLX 모드는 Python 3.10+가 필요합니다.
 
+- 자연어 말투(instruct)는 CosyVoice GGUF를 사용합니다. MLX는 제로샷 전용이라 지시문이 읽히지 않습니다.
+
+
 ## 진단
 - 패널의 "고급 설정 → 진단 실행"에서 서버, Tunnel, 공개 URL, webhook, dsh-meme 라이브러리, 이미지 변환 도구, 모델, 최근 오류를 확인할 수 있습니다. "안전 복구"는 tunnel 재연결과 webhook 재설정만 수행합니다.
 - CLI: `npx dsh-line-bot doctor`, `doctor --fix`, `doctor --json`.

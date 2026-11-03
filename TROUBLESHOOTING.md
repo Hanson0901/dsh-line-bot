@@ -38,6 +38,9 @@ npx dsh-line-bot doctor --fix   # 安全修復：重連 tunnel、重設 webhook
 - 合成約需 20–40 秒；reply token 過期時會自動改用 push。日誌看 `語音回覆`、`語音合成失敗`。
 - 模型只有在語言上下文有語音提示時才會加 `[[voice]]`；可先用「測試 Agent 回覆」確認。
 
+### 語音把語氣指令念出來
+- 舊版 MLX 的 instruct 模式會把語氣描述一起念；0.10.1 起 instruct 一律走 CosyVoice GGUF。升級後重新產生一次語音即可，舊音檔不會變。
+
 ### APNG 不會動
 - LINE 不播放 APNG，只顯示第一幀。保持 `stickers.apng=false` 即可。
 

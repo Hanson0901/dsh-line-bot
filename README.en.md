@@ -230,6 +230,7 @@ The persona can attach a sticker to a text reply, or reply with just an image. I
 - The persona can put `[[voice]]` at the end of a reply; the plugin synthesizes the text with CosyVoice3-0.5B and sends a LINE audio message (m4a).
 - On Apple Silicon macOS it synthesizes locally with MLX; on Windows (or without MLX) it uses CosyVoice GGUF (CrispASR). Press "Set up environment" once in the panel (downloads roughly 1–2 GB).
 - The "Voice replies" card toggles the feature, requires confirming that you have the rights to the voice, lets you upload a reference clip (the default is a 12–16 s cut of the provided sample), choose instruct/zero-shot mode, and preview the audio.
+- Natural-language style (instruct) uses CosyVoice GGUF; MLX is only used for zero-shot, so the instruction is never read aloud.
 - Synthesis takes about 20–40 s; if the reply token expires it falls back to push. Audio is stored under `<DSH_HOME>/line-bot/media/` and served at `/media/<token>` through the tunnel.
 - Requires `ffmpeg`; MLX mode needs Python 3.10+.
 

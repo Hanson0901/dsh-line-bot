@@ -1,3 +1,9 @@
+## 0.10.1
+
+- 語音：自然語言語氣（instruct）改用 CosyVoice GGUF；MLX 的 instruct 模式會把語氣指令一起念出來，已避免。
+- 語音：MLX 合成加上 `NUMBA_CACHE_DIR`，避免新版 Python 環境第一次執行就失敗。
+- 面板與文件更新語音引擎說明。
+
 ## 0.10.0
 
 - 新增語音回覆（CosyVoice3-0.5B）：角色可以在回覆最後加 `[[voice]]`，插件會把文字合成語音並用 LINE 語音訊息送出；合成失敗或 reply token 過期時自動改用文字／push。

@@ -230,6 +230,7 @@ Bot 被加進群組（或多人聊天室）後：
 - 角色可以在回覆最後加 `[[voice]]`，插件會用 CosyVoice3-0.5B 把文字合成語音，並以 LINE 語音訊息送出（m4a）。
 - macOS（Apple Silicon）在本機用 MLX 合成；Windows／沒有 MLX 時用 CosyVoice GGUF（CrispASR）。第一次要先在面板按「一鍵配置環境」（會下載模型，約 1–2GB）。
 - 面板「語音回覆」可開關、確認聲音使用權、上傳參考音（預設用指定音檔的 12–16 秒片段）、選推理模式與語氣指令、試聽。
+- 自然語言語氣（instruct）使用 CosyVoice GGUF；MLX 只用於零樣本模式，避免語氣指令被念出來。
 - 合成需要約 20–40 秒；若 reply token 過期會自動改用 push。語音檔存在 `<DSH_HOME>/line-bot/media/`，透過 tunnel 的 `/media/<token>` 提供。
 - 需要 `ffmpeg`；MLX 模式需要 Python 3.10+。
 

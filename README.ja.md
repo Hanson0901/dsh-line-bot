@@ -233,6 +233,9 @@ Bot がグループ（または複数人のルーム）に追加されたとき�
 - 合成には約 20–40 秒かかります。reply token の期限が切れた場合は push に切り替わります。音声は `<DSH_HOME>/line-bot/media/` に保存され、tunnel の `/media/<token>` で配信されます。
 - `ffmpeg` が必要です。MLX モードは Python 3.10+ が必要です。
 
+- 自然言語の話し方（instruct）は CosyVoice GGUF を使用します。MLX はゼロショット専用で、指示が読み上げられるのを防ぎます。
+
+
 ## 診断
 - パネルの「詳細設定 → 診断を実行」でサーバー、Tunnel、公開 URL、webhook、dsh-meme 図庫、画像変換ツール、モデル、最近のエラーを確認できます。「安全な修復」は tunnel 再接続と webhook 再設定だけを行います。
 - CLI：`npx dsh-line-bot doctor`、`doctor --fix`、`doctor --json`。
