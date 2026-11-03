@@ -38,6 +38,11 @@ npx dsh-line-bot doctor --fix   # 安全修復：重連 tunnel、重設 webhook
 - 合成約需 20–40 秒；reply token 過期時會自動改用 push。日誌看 `語音回覆`、`語音合成失敗`。
 - 模型只有在語言上下文有語音提示時才會加 `[[voice]]`；可先用「測試 Agent 回覆」確認。
 
+### Windows 一鍵配置語音失敗
+- 0.10.2 起會直接使用解壓後的 `crispasr.exe`，它必須和 `openblas.dll` 在同一個資料夾。
+- 若仍失敗，到 `%USERPROFILE%\.dsh\line-bot\tts\crispasr\windows\` 找 `crispasr-windows-x86_64-cpu\crispasr.exe`，手動雙擊或執行 `crispasr.exe --version` 看缺哪個 DLL。
+- 也需要 `ffmpeg` 在 PATH 中。
+
 ### 語音把語氣指令念出來
 - 舊版 MLX 的 instruct 模式會把語氣描述一起念；0.10.1 起 instruct 一律走 CosyVoice GGUF。升級後重新產生一次語音即可，舊音檔不會變。
 

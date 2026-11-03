@@ -1,3 +1,9 @@
+## 0.10.2
+
+- 修正 Windows 一鍵配置語音環境：改為直接使用解壓後的 `crispasr.exe`（與 `openblas.dll` 同資料夾），不再只複製 exe 導致缺少 DLL、`--version` 失敗。
+- 安裝時會實際執行 `crispasr.exe --version` 驗證，失敗時回報缺少 DLL 的細節。
+- 修正面板卡在「讀取中」：語音環境偵測改為快取＋只用檔案檢查，`/api/line-bot/status` 不再因 MLX 匯入檢查被阻塞（先前每次可能卡 30 秒以上）。
+
 ## 0.10.1
 
 - 語音：自然語言語氣（instruct）改用 CosyVoice GGUF；MLX 的 instruct 模式會把語氣指令一起念出來，已避免。
