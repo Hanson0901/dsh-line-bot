@@ -32,6 +32,12 @@ npx dsh-line-bot doctor --fix   # 安全修復：重連 tunnel、重設 webhook
 - 模型不支援時，插件會先用 modlens 描述，再改用另一個視覺模型，最後才退回貼圖關鍵字。
 - modlens 可在「進階 → 診斷」看 `vision` check；失敗通常是 provider 額度或 503。一般圖片可在面板「LINE 憑證」關閉「看得懂一般圖片」。
 
+### 語音沒送出或一直回文字
+- 面板「語音回覆」要開啟、確認聲音使用權，並按過「一鍵配置環境」（第一次會下載模型）。
+- macOS 需要 Apple Silicon + Python 3.10+；Windows 需要 `ffmpeg`。音檔上傳後可按「測試語音」試聽。
+- 合成約需 20–40 秒；reply token 過期時會自動改用 push。日誌看 `語音回覆`、`語音合成失敗`。
+- 模型只有在語言上下文有語音提示時才會加 `[[voice]]`；可先用「測試 Agent 回覆」確認。
+
 ### APNG 不會動
 - LINE 不播放 APNG，只顯示第一幀。保持 `stickers.apng=false` 即可。
 

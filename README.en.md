@@ -99,6 +99,7 @@ At the top of the panel is a **sticky save bar**: "Save changes / Refresh" stays
 | Jokes | Text joke library: built-in seeds, Tieba quotes, wanjiqi barrage memes; per-source toggles, per-turn injection count, add/delete entries |
 | Personal memory | Per-user long-term memory, expiry cleanup, daily self-review, manual delete |
 | Memes | Reply with images/stickers from the dsh-meme library, enable/disable, image limit, and sample previews |
+| Voice replies | CosyVoice3 speech synthesis, on/off, reference upload, instruct style, audio preview |
 | Sticker & image vision | Fetch incoming LINE stickers or images and show them to the model; when the model cannot read images, describe them with modlens or a vision model (can be disabled) |
 | DeepSeek balance | Current balance, per-turn context, low-balance proactive reminder, threshold and cooldown (deepseek-account only) |
 | Proactive messages | Toggle, per-user countdown, min/max interval, unanswered limit, daily/monthly caps, minimum gap, quiet hours, idle, target users, prompt, send a test now, statistics (next possible time and paused users) |
@@ -224,6 +225,14 @@ The persona can attach a sticker to a text reply, or reply with just an image. I
 - When a LINE sticker arrives, the bot fetches the image and shows it to the model; vision-capable models read it directly, otherwise the bot asks modlens, then tries another vision model, and only then falls back to the keywords LINE provides. Turn "Understand stickers" off in the LINE credentials card to use keywords only.
 - Regular images work the same way: the bot downloads them through LINE's content API and attaches them to the message; if the model cannot read images, the same modlens / vision-model description path is used. Turn "Understand images" off in the LINE credentials card to skip them.
 - Without dsh-meme installed, the feature stays off and replies are text only.
+## Voice replies (CosyVoice3)
+
+- The persona can put `[[voice]]` at the end of a reply; the plugin synthesizes the text with CosyVoice3-0.5B and sends a LINE audio message (m4a).
+- On Apple Silicon macOS it synthesizes locally with MLX; on Windows (or without MLX) it uses CosyVoice GGUF (CrispASR). Press "Set up environment" once in the panel (downloads roughly 1–2 GB).
+- The "Voice replies" card toggles the feature, requires confirming that you have the rights to the voice, lets you upload a reference clip (the default is a 12–16 s cut of the provided sample), choose instruct/zero-shot mode, and preview the audio.
+- Synthesis takes about 20–40 s; if the reply token expires it falls back to push. Audio is stored under `<DSH_HOME>/line-bot/media/` and served at `/media/<token>` through the tunnel.
+- Requires `ffmpeg`; MLX mode needs Python 3.10+.
+
 ## Diagnostics
 - Panel → Advanced → Run diagnostics checks the server, tunnel, public URL, webhook, dsh-meme library, image converters, model, and recent errors; Safe repair only reconnects the tunnel and re-applies the webhook.
 - CLI: `npx dsh-line-bot doctor`, `doctor --fix`, `doctor --json`.

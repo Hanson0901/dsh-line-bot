@@ -23,6 +23,7 @@ window.__ModuleLoader__.load({
       { key: 'balance', label: 'DeepSeek 餘額' },
       { key: 'nudge', label: '主動傳訊' },
       { key: 'meme', label: '表情包' },
+      { key: 'voice', label: '語音回覆' },
       { key: 'users', label: '使用者' },
       { key: 'group', label: '群組' },
       { key: 'advanced', label: '進階／日誌' },
@@ -366,6 +367,8 @@ window.__ModuleLoader__.load({
       const [modelCatalog, setModelCatalog] = useState(null)
       const [importGroup, setImportGroup] = useState('')
       const [doctorResult, setDoctorResult] = useState(null)
+      const [voicePreview, setVoicePreview] = useState(null)
+      const voiceInputRef = useRef(null)
       const importInput = useRef(null)
       const [localEdit, setLocalEdit] = useState({ id: '', name: '', text: '' })
 
@@ -697,6 +700,91 @@ window.__ModuleLoader__.load({
         await act('tieba-bars-add', {})
       }
 
+      async function installVoice() {
+        setBusy('voice-install')
+        setToast(null)
+        try {
+          await jpost('/action', { action: 'voice-install' })
+          setToast({ kind: 'ok', text: '已開始配置語音環境；完成前可以留在這一頁看狀態。' })
+        } catch (err) {
+          setToast({ kind: 'error', text: '配置失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function detectVoice() {
+        setBusy('voice-detect')
+        setToast(null)
+        try {
+          const value = await jpost('/action', { action: 'voice-detect' })
+          const result = value?.result || {}
+          setToast({ kind: 'ok', text: '偵測完成：' + (result.ready ? '環境就緒' : '尚未就緒（可按一鍵配置）') })
+          await refresh()
+        } catch (err) {
+          setToast({ kind: 'error', text: '偵測失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function testVoice() {
+        if (dirty) await persist(false).catch(() => {})
+        setBusy('voice-preview')
+        setToast(null)
+        try {
+          const value = await jpost('/action', { action: 'voice-preview', payload: { text: '主人，這是語音測試，聽得到嗎？' } })
+          const result = value?.result || null
+          setVoicePreview(result)
+          setToast({ kind: 'ok', text: result?.url ? '合成完成，可以試聽。' : '合成完成，但沒有公開網址；請確認 tunnel。' })
+        } catch (err) {
+          setToast({ kind: 'error', text: '語音測試失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function uploadVoice(event) {
+        const file = event?.target?.files?.[0]
+        if (event?.target) event.target.value = ''
+        if (!file) return
+        if (file.size > 20 * 1024 * 1024) {
+          setToast({ kind: 'error', text: '音檔超過 20MB。' })
+          return
+        }
+        setBusy('voice-save-reference')
+        setToast(null)
+        try {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result || ''))
+            reader.onerror = () => reject(new Error('讀取檔案失敗'))
+            reader.readAsDataURL(file)
+          })
+          await jpost('/action', { action: 'voice-save-reference', payload: { dataUrl, filename: file.name } })
+          await refresh()
+          setToast({ kind: 'ok', text: '參考音已更新。' })
+        } catch (err) {
+          setToast({ kind: 'error', text: '上傳失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
+      async function resetVoiceReference() {
+        setBusy('voice-reset-reference')
+        setToast(null)
+        try {
+          await jpost('/action', { action: 'voice-reset-reference' })
+          await refresh()
+          setToast({ kind: 'ok', text: '已改用內建預設參考音。' })
+        } catch (err) {
+          setToast({ kind: 'error', text: '重設失敗：' + (err.message || err) })
+        } finally {
+          setBusy('')
+        }
+      }
+
       async function refresh() {
         setToast(null)
         try {
@@ -757,6 +845,9 @@ window.__ModuleLoader__.load({
       const memoryStatus = status.memory || {}
       const agentStatus = status.agent || {}
       const modelProviders = Array.isArray(modelCatalog?.providers) ? modelCatalog.providers : []
+      const voiceCfg = cfg.voice || {}
+      const voiceStatus = status.voice || {}
+      const voiceSetup = voiceStatus.setup || {}
       const memoryUsers = memoryData?.users || []
       const syncStats = status.sync || {}
       const runtime = status
@@ -1317,10 +1408,48 @@ window.__ModuleLoader__.load({
               ),
         ),
 
+        // 5.5 語音回覆
+        h(
+          Card,
+          { id: sectionDomId('voice'), order: 12, title: '語音回覆（CosyVoice3）', desc: '用 CosyVoice3-0.5B 把回覆合成語音；角色可以自己決定要不要用語音，也可以只用文字。第一次使用要先按「一鍵配置環境」。' },
+          h('div', { style: S.row },
+            h(Badge, { ok: voiceStatus.ready === true }, voiceStatus.ready ? '語音環境就緒' : '尚未就緒'),
+            h(Badge, { ok: voiceCfg.consent === true }, voiceCfg.consent ? '已確認使用權' : '未確認使用權'),
+            h(Badge, { ok: true }, voiceStatus.mlx?.ok ? 'macOS MLX' : voiceStatus.gguf?.ok ? 'GGUF' : '未安裝引擎'),
+            h(Badge, { ok: !!voiceStatus.reference?.path }, voiceStatus.reference?.path ? ('參考音 ' + (voiceStatus.reference.seconds || 0) + ' 秒') : '沒有參考音'),
+          ),
+          h('div', { style: S.hint }, 'macOS 會用 MLX（較快）；Windows 或沒有 MLX 時用 CosyVoice GGUF。合成一次約需 20–40 秒，送出時若 reply token 過期會自動改用 push。'),
+          h(Toggle, { checked: voiceCfg.enabled === true, onChange: (value) => update({ voice: { enabled: value } }), label: '開啟語音回覆', hint: '開啟後角色可以自己決定用語音；關閉時完全不合成。' }),
+          h(Toggle, { checked: voiceCfg.consent === true, onChange: (value) => update({ voice: { consent: value } }), label: '我確認有使用此聲音的權利', hint: '使用他人聲音做克隆前請先取得同意；確認後才會合成。' }),
+          h('div', { style: S.row },
+            h(Btn, { onClick: installVoice, disabled: !!busy }, busy === 'voice-install' ? '安裝中…' : '一鍵配置環境'),
+            h(Btn, { onClick: detectVoice, disabled: !!busy }, busy === 'voice-detect' ? '偵測中…' : '重新偵測'),
+            h(Btn, { onClick: testVoice, disabled: !!busy }, busy === 'voice-preview' ? '合成中…' : '測試語音'),
+            h(Btn, { onClick: () => voiceInputRef.current && voiceInputRef.current.click(), disabled: !!busy }, '上傳參考音'),
+            h('input', { ref: voiceInputRef, type: 'file', accept: 'audio/*', style: { display: 'none' }, onChange: uploadVoice }),
+          ),
+          h('div', { style: S.hint }, '目前參考音：' + (voiceStatus.reference?.path || '（尚未設定，預設會用插件內建的 12–16 秒片段）')),
+          voiceStatus.reference?.path ? h('div', { style: S.row }, h(Btn, { onClick: resetVoiceReference, disabled: !!busy }, '改用內建預設參考音')) : null,
+          h('div', { style: S.grid },
+            h(Field, { label: '引擎', hint: 'auto 會依系統自動挑選' }, h('select', { value: voiceCfg.provider || 'auto', onChange: (event) => update({ voice: { provider: event.target.value } }), style: S.input }, ['auto', 'mlx', 'gguf'].map((item) => h('option', { key: item, value: item }, item)))),
+            h(Field, { label: '推理模式' }, h('select', { value: voiceCfg.cloneMode || 'instruct', onChange: (event) => update({ voice: { cloneMode: event.target.value } }), style: S.input }, [['instruct', '自然語言語氣控制'], ['zero-shot', '零樣本（需參考音文字）']].map(([value, label]) => h('option', { key: value, value }, label)))),
+            h(Field, { label: '一次最多幾個字', hint: '太長會截斷；語音訊息上限約 60 秒' }, h(Num, { value: voiceCfg.maxChars, min: 20, max: 300, step: 10, onChange: (value) => update({ voice: { maxChars: value } }) })),
+          ),
+          h(Field, { label: '語氣指令（instruct）', hint: '用自然語言描述想要的語氣' }, h(Area, { value: voiceCfg.instructText, rows: 2, onChange: (value) => update({ voice: { instructText: value } }) })),
+          voiceCfg.cloneMode === 'zero-shot' ? h(Field, { label: '參考音文字（zero-shot 用）' }, h(Area, { value: voiceCfg.refText, rows: 2, onChange: (value) => update({ voice: { refText: value } }) })) : null,
+          voiceSetup.phase && voiceSetup.phase !== 'idle'
+            ? h('div', { style: voiceSetup.phase === 'error' ? S.warnBox : S.note }, '環境狀態：' + (voiceSetup.message || voiceSetup.phase) + (voiceSetup.error ? '（' + voiceSetup.error + '）' : ''))
+            : null,
+          voiceStatus.lastError ? h('div', { style: S.warnBox }, '最近錯誤：' + voiceStatus.lastError) : null,
+          voicePreview
+            ? h('div', { style: S.panelBox }, h('div', { style: S.fieldTitle }, '試聽（' + (voicePreview.provider || '') + '，' + Math.round((voicePreview.durationMs || 0) / 1000) + ' 秒）'), h('audio', { controls: true, src: voicePreview.url || voicePreview.localUrl || '', style: { width: '100%' } }))
+            : null,
+        ),
+
         // 6. 使用者
         h(
           Card,
-          { id: sectionDomId('users'), order: 12, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
+          { id: sectionDomId('users'), order: 13, title: '使用者', desc: '與 bot 互動過的 LINE 使用者。每個人有自己的 DSH session 與工作資料夾（記憶、檔案不互通），人設也可以個別指定。' },
           (access.pending || []).length > 0
             ? h('div', { style: S.panelBox },
                 h('div', { style: S.fieldTitle }, `待審核（${access.pending.length}）`),
@@ -1370,7 +1499,7 @@ window.__ModuleLoader__.load({
         // 6.5 群組
         h(
           Card,
-          { id: sectionDomId('group'), order: 13, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶；比較晚加入時可以匯入 LINE 匯出的聊天記錄補記憶。' },
+          { id: sectionDomId('group'), order: 14, title: '群組', desc: '被加進群組時，只有被 @、被引用，或依機率擲骰才回覆；每個群組有自己的 session、工作資料夾、人設與記憶；比較晚加入時可以匯入 LINE 匯出的聊天記錄補記憶。' },
           h('input', { ref: importInput, type: 'file', accept: '.txt,text/plain', style: { display: 'none' }, onChange: importChatFile }),
           h('div', { style: S.grid },
             h(Field, { label: '沒被點名時的回覆機率（%）', hint: '每則群組訊息用這個機率決定要不要回；0 就只在被 @ 或引用時回' },

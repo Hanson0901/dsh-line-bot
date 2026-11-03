@@ -1,3 +1,10 @@
+## 0.10.0
+
+- 新增語音回覆（CosyVoice3-0.5B）：角色可以在回覆最後加 `[[voice]]`，插件會把文字合成語音並用 LINE 語音訊息送出；合成失敗或 reply token 過期時自動改用文字／push。
+- macOS（Apple Silicon）用 MLX 在本機合成；Windows／沒有 MLX 時用 CosyVoice GGUF（CrispASR）。面板可一鍵偵測與配置環境、開關語音、上傳參考音、調整語氣指令與長度、試聽。
+- 參考音預設使用指定音檔的 12–16 秒片段（存在 `<DSH_HOME>/line-bot/tts/ref/default.wav`）；可上傳自己的音檔替換。
+- 使用前必須在面板確認「有使用此聲音的權利」；語音檔會存在本機媒體庫，透過 tunnel 的 `/media/<token>` 提供給 LINE。
+
 # Changelog
 
 ## 0.9.7

@@ -99,6 +99,7 @@ npx dsh-line-bot install --no-companions
 | 玩梗 | 文字梗库：内置种子、贴吧金句、wanjiqi 弹幕梗；三个来源可分别开关、每轮注入几条、新增／删除梗 |
 | 个人记忆 | 每位用户分开的长期记忆、到期自动删除、每日请角色整理、手动删除 |
 | 表情包 | 使用 dsh-meme 图库回图片/贴图、开关、每次最多几张、图库样本 |
+| 语音回复 | CosyVoice3 语音合成、开关、参考音频上传、语气指令、试听 |
 | 贴图与图片理解 | 收到 LINE 贴图或一般图片时抓图给模型看；模型不吃图时用 modlens 或另一个视觉模型描述（可关闭） |
 | DeepSeek 余额 | 当前余额、每轮注入、低于门槛时由角色主动提醒、提醒门槛与冷却（仅 deepseek-account） |
 | 主动传讯 | 开关、每位使用者的倒数、最短／最长间隔、连续未回复上限、每日／每月上限、两则间距、安静时段、idle、指定对象、提示词、立即试传、统计（下次可能时间与暂停人数） |
@@ -224,6 +225,14 @@ Bot 被加入群组（或多人聊天室）后：
 - 收到 LINE 贴图时，会抓贴图图片交给模型看；模型支持图片就直接读，否则先用 modlens 描述，再不支持就改用另一个视觉模型，最后才退回 LINE 提供的关键词。可在「LINE 凭证」卡关闭「看得懂贴图」。
 - 一般图片也一样：通过 LINE content API 下载后直接附给模型；模型不吃图时走同一套 modlens／视觉模型描述。可在「LINE 凭证」卡关闭「看得懂一般图片」。
 - 没安装 dsh-meme 时该功能会自动停用，只回文字。
+## 语音回复（CosyVoice3）
+
+- 角色可以在回复最后加 `[[voice]]`，插件会用 CosyVoice3-0.5B 把文字合成语音，并以 LINE 语音消息发送（m4a）。
+- macOS（Apple Silicon）在本机用 MLX 合成；Windows／没有 MLX 时用 CosyVoice GGUF（CrispASR）。第一次要先在面板按「一键配置环境」（会下载模型，约 1–2GB）。
+- 面板「语音回复」可开关、确认声音使用权、上传参考音频（默认用指定音频的 12–16 秒片段）、选择推理模式与语气指令、试听。
+- 合成需要约 20–40 秒；若 reply token 过期会自动改用 push。语音文件存在 `<DSH_HOME>/line-bot/media/`，通过 tunnel 的 `/media/<token>` 提供。
+- 需要 `ffmpeg`；MLX 模式需要 Python 3.10+。
+
 ## 诊断与修复
 - 面板「高级设置 → 执行诊断」会检查服务器、Tunnel、公开网址、webhook、表情包图库、转图工具、模型与最近错误；「自动修复（安全）」只会重连 tunnel、重设 webhook。
 - 终端：`npx dsh-line-bot doctor`、`npx dsh-line-bot doctor --fix`、`doctor --json`。

@@ -31,6 +31,7 @@ curl -s http://127.0.0.1:8791/health
 | 主動訊息沒出現 | 面板「主動傳訊」 | 每位使用者的倒數還沒到、每日／每月上限、靜音時段、兩則間距冷卻、連續未回覆已被暫停、沒有 session 或不在白名單 | 看 `status.nudge`、使用者表的「下次主動／未回覆」與日誌 |
 | 餘額提醒沒出現 | `balance` | provider 不是 `deepseek-account`、餘額高於門檻、冷卻中、靜音 | 面板「DeepSeek 餘額」看 `applicable`、`lastAskAt` |
 | Windows 安裝失敗 | CLI | 找不到 DSH 內建 pnpm；舊版 spawn `.cmd` 失敗 | 用面板安裝，或升級 CLI；必要時 `npm i -g pnpm` |
+| 語音沒送出或一直回文字 | 面板「語音回覆」、日誌 | 尚未按一鍵配置環境、未確認聲音使用權、沒有 ffmpeg、MLX 載入失敗、reply token 過期 | 面板「語音回覆」按一鍵配置與測試；看日誌 `語音回覆`／`語音合成失敗`；必要時看 `status.voice` |
 | npm `ETARGET` | — | registry／CDN 還沒傳播 | 等 1–5 分鐘再試 |
 
 ## 2. 圖片沒送出的排查順序
@@ -50,6 +51,7 @@ curl -s http://127.0.0.1:8791/health
 - `lib/meme-source.mjs`：讀 dsh-meme。
 - `lib/chat-import.mjs`：LINE 匯出聊天解析。
 - `lib/diagnostics.mjs`：doctor 用的檢查工具。
+- `lib/tts.mjs`／`tools/mlx_synth.py`：CosyVoice3 語音合成（MLX／GGUF）。
 - `bin/cli.mjs`：安裝／`doctor`。
 - HTTP：`/api/line-bot/status|config|action|doctor`（webServer）、`http://127.0.0.1:<port>/doctor|health|media/<id>|webhook`（外掛自己的伺服器）。
 - 資料：`$DSH_HOME/line-bot/`（config.json 600、state.json、memories.json、logs、personas、cache、users）。
