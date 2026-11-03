@@ -1,3 +1,8 @@
+## 0.10.5
+
+- 合併連續訊息：模型還在處理上一則時，使用者又補了下一句，會先排進佇列；這一輪結束後把補充內容合成同一段一起回應，不再每句各回一次。
+- webhook 佇列改成 per-conversation 的 pending 清單，避免慢回覆期間的補充訊息被丟掉或觸發另一輪獨立回覆。
+
 ## 0.10.4
 
 - Windows 語音引擎：優先選擇含 `openblas.dll` 的完整 CrispASR bundle，忽略舊安裝留下的裸 `crispasr.exe`（避免 `STATUS_DLL_NOT_FOUND`）。
