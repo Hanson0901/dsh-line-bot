@@ -1428,7 +1428,7 @@ window.__ModuleLoader__.load({
             h(Btn, { onClick: () => voiceInputRef.current && voiceInputRef.current.click(), disabled: !!busy }, '上傳參考音'),
             h('input', { ref: voiceInputRef, type: 'file', accept: 'audio/*', style: { display: 'none' }, onChange: uploadVoice }),
           ),
-          h('div', { style: S.hint }, '目前參考音：' + (voiceStatus.reference?.path || '（尚未設定，預設會用插件內建的 12–16 秒片段）')),
+          h('div', { style: S.hint }, '目前參考音：' + (voiceStatus.reference?.path || '（尚未設定，預設會用插件內建的 12–16 秒片段）') + '（上傳後會自動去開頭靜音並裁到前 15 秒）'),
           voiceStatus.reference?.path ? h('div', { style: S.row }, h(Btn, { onClick: resetVoiceReference, disabled: !!busy }, '改用內建預設參考音')) : null,
           h('div', { style: S.grid },
             h(Field, { label: '引擎', hint: 'auto 會依系統自動挑選' }, h('select', { value: voiceCfg.provider || 'auto', onChange: (event) => update({ voice: { provider: event.target.value } }), style: S.input }, ['auto', 'mlx', 'gguf'].map((item) => h('option', { key: item, value: item }, item)))),
